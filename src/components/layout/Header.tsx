@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { NavigationItem } from './NavigationItem';
-import { fadeIn } from '@/utils/animations';
 
 interface HeaderProps {
   phone: string;
