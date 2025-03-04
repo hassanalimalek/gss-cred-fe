@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 export const AboutHero = () => {
   return (
@@ -30,12 +31,15 @@ export const AboutHero = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="relative h-[500px] lg:h-[600px] w-full rounded-lg overflow-hidden shadow-xl"
           >
-            <img
+            <Image
               src="/images/angel-wide.jpg"
               alt="Angel statue symbolizing guidance and protection"
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              priority
             />
           </motion.div>
+
         </div>
 
         {/* Mission / Vision / Values Section */}

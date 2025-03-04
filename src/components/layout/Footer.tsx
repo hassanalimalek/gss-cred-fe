@@ -1,6 +1,8 @@
 "use client";
 import { motion } from "framer-motion";
 import { Phone, Mail, FileText, Home, Globe, MessageSquare, Facebook, Twitter, Instagram } from "lucide-react";
+import Image from "next/image";
+import { footerLinks } from "@/data/footer";
 
 interface FooterLinkProps {
   icon: React.ReactNode;
@@ -30,21 +32,24 @@ const FooterLink = ({ icon, text, href }: FooterLinkProps) => (
 
 export const Footer = () => {
   const links = {
-    contact: [
-      { icon: <Phone className="w-full h-full" />, text: "1-214-444-9837", href: "tel:12144449837" },
-      { icon: <Mail className="w-full h-full" />, text: "Cred@Gznite.Com", href: "mailto:Cred@Gznite.Com" },
-      { icon: <FileText className="w-full h-full" />, text: "Disclosure Document", href: "/disclosure" },
-    ],
-    navigation: [
-      { icon: <Home className="w-full h-full" />, text: "Home", href: "/" },
-      { icon: <Globe className="w-full h-full" />, text: "About Us", href: "/about" },
-      { icon: <MessageSquare className="w-full h-full" />, text: "Contact Us", href: "/contact" },
-    ],
-    social: [
-      { icon: <Facebook className="w-full h-full" />, text: "Facebook", href: "https://facebook.com" },
-      { icon: <Twitter className="w-full h-full" />, text: "Twitter", href: "https://twitter.com" },
-      { icon: <Instagram className="w-full h-full" />, text: "Instagram", href: "https://instagram.com" },
-    ],
+    contact: footerLinks.contact.map(link => ({
+      ...link,
+      icon: link.text.includes('214') ? <Phone className="w-full h-full" /> :
+            link.text.includes('@') ? <Mail className="w-full h-full" /> :
+            <FileText className="w-full h-full" />
+    })),
+    navigation: footerLinks.navigation.map(link => ({
+      ...link,
+      icon: link.text.includes('Home') ? <Home className="w-full h-full" /> :
+            link.text.includes('About') ? <Globe className="w-full h-full" /> :
+            <MessageSquare className="w-full h-full" />
+    })),
+    social: footerLinks.social.map(link => ({
+      ...link,
+      icon: link.text.includes('Facebook') ? <Facebook className="w-full h-full" /> :
+            link.text.includes('Twitter') ? <Twitter className="w-full h-full" /> :
+            <Instagram className="w-full h-full" />
+    })),
   };
 
   return (
@@ -56,10 +61,10 @@ export const Footer = () => {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div className="pr-8">
             <div className="inline-block p-2 bg-white rounded">
-              <img src="/images/logo.webp" alt="Mulligan Credit Repair" className="h-12" />
+              <Image src="/images/logo.webp" alt="Mulligan Credit Repair" width={240} height={48} className="h-12" />
             </div>
             <p className="mt-6 text-sm leading-relaxed">
-              Mulligan Credit Repair Is Dedicated To Helping Individuals And Businesses Improve Their Credit Scores. Our Personalized Plans And Comprehensive Services Make Us A Trusted Partner In Credit Health. Whether You're Dealing With Unexpected Financial Setbacks Or Looking To Enhance Your Financial Future, We're Here To Help.
+              Mulligan Credit Repair Is Dedicated To Helping Individuals And Businesses Improve Their Credit Scores. Our Personalized Plans And Comprehensive Services Make Us A Trusted Partner In Credit Health. Whether You&apos;re Dealing With Unexpected Financial Setbacks Or Looking To Enhance Your Financial Future, We&apos;re Here To Help.
             </p>
           </div>
 

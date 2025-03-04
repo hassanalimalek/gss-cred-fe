@@ -1,9 +1,12 @@
-import type { Metadata } from "next";
+'use client';
+
 import { Geist, Geist_Mono, PT_Serif } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { Toaster } from 'react-hot-toast';
+import { useHashNavigation } from '@/hooks/useHashNavigation';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,17 +24,13 @@ const ptSerif = PT_Serif({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: 'Mulligan Credit Repair - Restore Your Credit Score',
-  description: 'Expert credit repair services helping you remove negative items and improve your credit score. Get personalized solutions for a better financial future.',
-  keywords: ['credit repair', 'credit score improvement', 'remove negative items', 'financial freedom'],
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  useHashNavigation();
+
   return (
     <html lang="en">
       <body
@@ -44,6 +43,7 @@ export default function RootLayout({
             <Footer />
           </div>
         </ErrorBoundary>
+        <Toaster position="bottom-right" />
       </body>
     </html>
   );

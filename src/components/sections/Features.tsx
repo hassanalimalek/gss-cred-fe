@@ -1,5 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
+import Image from "next/image";
+import { featureCards } from "@/data/features";
 
 /**
  * Base feature data structure
@@ -30,11 +32,14 @@ interface ImageProps {
  * Reusable image component for feature cards
  */
 const FeatureImage = ({ src, alt, className }: ImageProps) => (
-  <img
-    src={src}
-    alt={alt}
-    className={className}
-  />
+  <div className="relative w-full h-[200px]">
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className={`object-cover ${className || ''}`}
+    />
+  </div>
 );
 
 /**
@@ -82,33 +87,15 @@ const FeatureCard = ({ icon, title, description, delay }: FeatureCardProps) => {
  * with animated cards and responsive layout
  */
 export const Features = () => {
-  // Define feature cards data
-  const features: Feature[] = [
-    {
-      icon: <FeatureImage src="/images/handshake.webp" alt="Handshake representing our proven track record" className="w-full h-[200px] sm:h-[250px] md:h-[280px] lg:h-[320px] object-cover rounded-md" />,
-      title: "Proven Track Record",
-      description:
-        "Our expert team has helped thousands of individuals improve their credit scores, opening doors to better interest rates, loan approvals, and financial freedom.",
-    },
-    {
-      icon: <FeatureImage src="/images/angel-small.webp" alt="Angel statue representing personalized guidance" className="w-full h-[200px] sm:h-[250px] md:h-[280px] lg:h-[320px] object-cover rounded-md" />,
-      title: "Personalized Plans",
-      description:
-        "We don't believe in one-size-fits-all solutions. Our credit repair strategies are tailored to your unique financial situation.",
-    },
-    {
-      icon: <FeatureImage src="/images/wall-outdoor.jpg" alt="Architectural columns representing comprehensive services" className="w-full h-[200px] sm:h-[250px] md:h-[280px] lg:h-[320px] object-cover rounded-md" />,
-      title: "Comprehensive Services",
-      description:
-        "From disputing inaccuracies to negotiating with creditors, we handle all aspects of credit repair.",
-    },
-    {
-      icon: <FeatureImage src="/images/tech.webp" alt="Technology interface representing transparent process" className="w-full h-[200px] sm:h-[250px] md:h-[280px] lg:h-[320px] object-cover rounded-md" />,
-      title: "Transparent Process",
-      description:
-        "We believe in full transparency. You'll receive regular updates and access to your progress.",
-    },
-  ];
+  const features: Feature[] = featureCards.map(card => ({
+    icon: <FeatureImage 
+      src={card.imagePath} 
+      alt={card.imageAlt} 
+      className="w-full h-[200px] sm:h-[250px] md:h-[280px] lg:h-[320px] object-cover rounded-md" 
+    />,
+    title: card.title,
+    description: card.description,
+  }));
 
   return (
     <section
@@ -156,7 +143,7 @@ export const Features = () => {
           className="text-center mt-12"
         >
           <a
-            href="#contact"
+            href="#onboarding"
             className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 transition-all rounded-md"
             role="button"
             aria-label="Get started with our credit repair services"

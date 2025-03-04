@@ -48,7 +48,7 @@ export const Hero = () => {
         className="flex gap-4 mt-7"
       >
         <a
-          href="#contact"
+          href="#onboarding"
           className="inline-flex items-center justify-center px-8 sm:px-12 py-4 sm:py-5 text-base sm:text-lg font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 transition-all rounded-md min-h-[44px] min-w-[44px]"
           role="button"
           aria-label="Get started with credit repair services"

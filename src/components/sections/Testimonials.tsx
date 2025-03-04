@@ -2,25 +2,14 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fadeIn } from "@/utils/animations";
+import Image from "next/image";
+import { testimonials } from "@/data/testimonials";
 
-interface Testimonial {
+export interface Testimonial {
   image: string;
   name: string;
   text: string;
 }
-
-const testimonials: Testimonial[] = [
-  {
-    image: "/images/client-female-2.webp",
-    name: "Jane D",
-    text: "Increased her credit score by 120 points in just 60 days, allowing her to qualify for a mortgage with a competitive interest rate."
-  },
-  {
-    image: "/images/client-male-1.webp",
-    name: "Mike T",
-    text: "Eliminated erroneous collections from his credit report, saving him over $10,000 in potential payments."
-  }
-];
 
 export const Testimonials = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -58,11 +47,12 @@ export const Testimonials = () => {
               transition={{ duration: 0.5 }}
               className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 bg-white rounded-xl p-8 shadow-sm"
             >
-              <div className="w-36 h-36 sm:w-48 sm:h-48 md:w-64 md:h-64 flex-shrink-0 overflow-hidden rounded-lg shadow-lg">
-                <img
+              <div className="w-36 h-36 sm:w-48 sm:h-48 md:w-64 md:h-64 flex-shrink-0 overflow-hidden rounded-lg shadow-lg relative">
+                <Image
                   src={testimonials[currentIndex].image}
                   alt={`${testimonials[currentIndex].name}'s testimonial`}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               </div>
               <div className="flex flex-col justify-center md:py-4">
@@ -88,6 +78,21 @@ export const Testimonials = () => {
             ))}
           </div>
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="flex justify-center mt-12"
+        >
+          <a
+            href="/testimonials"
+            className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 transition-all rounded-md"
+            role="button"
+          >
+            View All Testimonials
+          </a>
+        </motion.div>
       </div>
     </section>
   );

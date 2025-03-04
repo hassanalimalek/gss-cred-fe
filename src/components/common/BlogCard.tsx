@@ -59,3 +59,5 @@ export const BlogCard = React.memo(({ id, title, excerpt, date, category, image,
     </motion.article>
   );
 });
+
+BlogCard.displayName = 'BlogCard';

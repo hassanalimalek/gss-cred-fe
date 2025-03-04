@@ -1,22 +1,19 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
-interface NavLink {
-  name: string;
-  href: string;
-}
+
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
 
-  const links: NavLink[] = [
+  const links = useMemo(() => [
     { name: "Home", href: "#home" },
     { name: "About", href: "#about" },
     { name: "Services", href: "#services" },
     { name: "FAQ", href: "#faq" },
     { name: "Contact", href: "#contact" },
-  ];
+  ], []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -92,7 +89,15 @@ export const Navigation = () => {
               onClick={(e) => {
                 e.preventDefault();
                 const element = document.querySelector(link.href);
-                element?.scrollIntoView({ behavior: "smooth" });
+                if (element) {
+                  const headerOffset = 100;
+                  const elementPosition = element.getBoundingClientRect().top;
+                  const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                  window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                  });
+                }
                 setIsOpen(false);
               }}
             >

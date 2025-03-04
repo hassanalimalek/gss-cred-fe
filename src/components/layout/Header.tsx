@@ -5,6 +5,7 @@ import { Linkedin, Facebook, Twitter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { NavigationItem } from './NavigationItem';
 
 interface HeaderProps {
@@ -15,6 +16,7 @@ interface HeaderProps {
 const navigationItems = [
   { path: '/', label: 'Home' },
   { path: '/about', label: 'About' },
+  { path: '/how-it-works', label: 'How It Works' },
   { path: '/updates', label: 'Updates' },
   { path: '/contact', label: 'Contact' },
 ];
@@ -72,16 +74,16 @@ const Header = React.memo(({ phone, email }: HeaderProps) => {
         <div className="w-full md:w-[90%] mx-auto flex justify-between items-center">
           {/* Logo */}
           <div className="flex items-center">
-            <a href="/" className="flex items-center">
+            <Link href="/" className="flex items-center">
               <Image 
                 src="/images/logo.webp" 
                 alt="Mulligan Credit Repair" 
-                width={120}
-                height={40}
+                width={320}
+                height={220}
                 className="h-10 w-auto" 
                 priority
               />
-            </a>
+            </Link>
           </div>
           
           {/* Desktop Navigation */}

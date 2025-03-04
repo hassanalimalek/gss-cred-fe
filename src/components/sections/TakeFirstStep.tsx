@@ -1,5 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 /**
  * Creates a fade-in animation with customizable direction and delay
@@ -32,7 +33,7 @@ export const TakeFirstStep = () => {
             </p>
             <div className="text-center lg:text-left">
               <a
-                href="#contact"
+                href="/#onboarding"
                 className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md transition-colors duration-300 min-h-[44px] min-w-[44px]"
                 role="button"
                 aria-label="Start your credit repair journey"
@@ -45,17 +46,23 @@ export const TakeFirstStep = () => {
           {/* Images */}
           <motion.div {...fadeIn("up", 0.2)} className="relative w-full lg:w-[50%] flex flex-col sm:flex-row justify-center items-center gap-6 lg:gap-8">
             <div className="w-full sm:w-[250px] h-[300px] sm:h-[320px] relative rounded-lg overflow-hidden shadow-lg sm:mt-72">
-              <img
+              <Image
                 src="/images/wall-outdoor.jpg"
                 alt="Professional office environment representing our commitment"
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 250px, 400px"
+                className="object-cover"
+                priority
               />
             </div>
             <div className="w-full sm:w-[480px] h-[300px] sm:h-[420px] relative rounded-lg overflow-hidden shadow-lg">
-              <img
+              <Image
                 src="/images/handshake.webp"
                 alt="Team collaboration representing our dedicated support"
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 480px, 600px"
+                className="object-cover"
+                priority
               />
             </div>
           </motion.div>

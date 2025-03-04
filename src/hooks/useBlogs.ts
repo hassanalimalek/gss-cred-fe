@@ -1,6 +1,7 @@
 "use client";
 import useSWR from 'swr';
 import { blogPosts } from '@/data/blogs';
+import { useEffect, useState } from 'react';
 
 // Define the Blog interface
 export interface Blog {
@@ -11,6 +12,7 @@ export interface Blog {
   category: string;
   image: string;
   slug: string;
+  content: string;
 }
 
 // Fetcher function for when we implement the API route
@@ -23,7 +25,26 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
  * @returns Blog data, loading state, and error state
  */
 export function useBlogs(useStatic: boolean = true) {
-  // If using static data, return immediately without network request
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const { data, error, isLoading } = useSWR<Blog[]>(
+    useStatic ? null : '/api/blogs',
+    fetcher
+  );
+
+  // During server-side rendering, return a consistent initial state
+  if (!isClient) {
+    return {
+      blogs: [],
+      isLoading: true,
+      isError: false
+    };
+  }
+
   if (useStatic) {
     return {
       blogs: blogPosts,
@@ -32,12 +53,9 @@ export function useBlogs(useStatic: boolean = true) {
     };
   }
   
-  // Otherwise use SWR to fetch from API
-  const { data, error, isLoading } = useSWR<Blog[]>('/api/blogs', fetcher);
-  
   return {
     blogs: data || [],
     isLoading,
-    isError: !!error
+    isError: error
   };
 }

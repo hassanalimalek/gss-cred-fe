@@ -3,7 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { PaymentInputsContainer } from "react-payment-inputs";
 import { usePaymentInputs } from "react-payment-inputs";
-import images from "react-payment-inputs/images";
+import { submitCreditRepairRequest, CreditRepairRequest, uploadFiles } from "../../lib/api";
+import { showSuccessToast, showErrorToast } from "@/utils/toast";
+import axios from 'axios';
 
 // Extend Window interface to include Accept.js
 declare global {
@@ -16,6 +18,13 @@ declare global {
     };
   }
 }
+
+// Helper component to filter out the isTouched prop and other non-standard HTML attributes
+const InputWrapper = ({ isTouched, ...props }: { isTouched?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) => {
+  // Properly filter out the isTouched prop before passing props to the DOM element
+  // The destructuring above already removes isTouched from props
+  return <input {...props} />;
+};
 
 interface CreditCardPreviewProps {
   cardNumber: string;
@@ -109,28 +118,35 @@ interface FormData {
   package: string;
   utilityBill: FileList | null;
   driverLicense: FileList | null;
-  amount: string;
-  [key: string]: string | FileList | null; // Index signature for dynamic access
+  address: string;
+  dateOfBirth: string;
+  [key: string]: string | FileList | null;
+}
+
+interface UploadProgress {
+  utilityBill: number;
+  driverLicense: number;
 }
 
 interface FormErrors {
   [key: string]: string;
 }
 
-interface PaymentData {
-  dataValue: string;
-  dataDescriptor: string;
-}
 
-const ContactPaymentForm = () => {
-  // Replace with your real Authorize.Net keys
-  const PUBLIC_CLIENT_KEY = "YOUR_PUBLIC_CLIENT_KEY";
-  const API_LOGIN_ID = "YOUR_API_LOGIN_ID";
+const OnboardingForm = () => {
+  // Add client-side only state
+  const [isMounted, setIsMounted] = useState(false);
+  
+
+  
+  const PUBLIC_CLIENT_KEY = process.env.NEXT_PUBLIC_AUTHORIZE_CLIENT_KEY || "";
+  const API_LOGIN_ID = process.env.NEXT_PUBLIC_AUTHORIZE_LOGIN_ID || "";
+
 
   const packageOptions = [
-    { value: "tier1", label: "Tier 1", price: 1499 },
-    { value: "tier2", label: "Tier 2", price: 2499 },
-    { value: "tier3", label: "Tier 3", price: 3499 },
+    { value: "TIER_1", label: "Tier 1", price: 2199 },
+    { value: "TIER_2", label: "Tier 2", price: 2499 },
+    { value: "TIER_3", label: "Tier 3", price: 3499 },
   ];
 
   const [formData, setFormData] = useState<FormData>({
@@ -142,13 +158,16 @@ const ContactPaymentForm = () => {
     package: "",
     utilityBill: null,
     driverLicense: null,
-    amount: "",
+    address: "",
+    dateOfBirth: "",
   });
 
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [isAcceptReady, setIsAcceptReady] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress>({ utilityBill: 0, driverLicense: 0 });
+  const [isUploading, setIsUploading] = useState(false);
 
   // Payment card state
   const [cardNumber, setCardNumber] = useState("");
@@ -161,13 +180,25 @@ const ContactPaymentForm = () => {
 
   // Load Authorize.Net Accept.js
   useEffect(() => {
+    setIsMounted(true);
+    
+    const existingScript = document.getElementById('accept-js');
+    if (existingScript) existingScript.remove();
+
     const script = document.createElement("script");
-    script.src = "https://js.authorize.net/v3/Accept.js";
+    script.src = "https://jstest.authorize.net/v1/Accept.js";
+    script.id = 'accept-js';
     script.async = true;
-    script.onload = () => setIsAcceptReady(true);
+    script.setAttribute('data-environment', 'sandbox');
+    
+    script.onload = () => {
+      setIsAcceptReady(true);
+      console.log('Accept.js loaded successfully');
+    };
     script.onerror = () => {
       console.error("Failed to load Accept.js");
-      script.setAttribute("data-error", "true");
+      setStatus('error');
+      setMessage('Failed to load payment processor');
     };
     document.body.appendChild(script);
 
@@ -177,6 +208,22 @@ const ContactPaymentForm = () => {
       }
     };
   }, []);
+
+  // If not mounted yet (server-side), return a loading state
+  if (!isMounted) {
+    return (
+      <section className="py-16 sm:py-24 lg:py-32 bg-white">
+        <div className="w-[95%] sm:w-[90%] mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl sm:text-5xl font-bold text-[#0A173B] mb-4 font-['PT_Serif']">
+            Contact Us
+          </h2>
+          <p className="text-lg text-gray-600 font-montserrat">
+            Loading contact form...
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -203,34 +250,39 @@ const ContactPaymentForm = () => {
   };
 
   // Validate
-  const validateForm = () => {
+  const validateForm = (): FormErrors | null => {
     const newErrors: FormErrors = {};
-    const { name, email, phone, ssn, package: pkg, amount } = formData;
+    const { name, email, phone, ssn, package: pkg, address, dateOfBirth, utilityBill, driverLicense } = formData;
 
     if (!name) newErrors.name = "Name is required";
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = "Valid email is required";
     }
-    if (!phone || !/^\d{10}$/.test(phone.replace(/\D/g, ""))) {
-      newErrors.phone = "Valid phone number is required";
-    }
-    if (!ssn || !/^\d{9}$/.test(ssn.replace(/\D/g, ""))) {
-      newErrors.ssn = "Valid SSN is required";
-    }
+    // if (!phone || !/^\+?[0-9\s\-\(\)]{10,15}$/.test(phone)) {
+    //   newErrors.phone = "Valid phone number is required";
+    // }
+    // if (!ssn || !/^\d{3}-?\d{2}-?\d{4}$/.test(ssn)) {
+    //   newErrors.ssn = "Valid SSN is required (format: 123-45-6789)";
+    // }
     if (!pkg) newErrors.package = "Please select a package";
-
-    // If you need to require an amount:
-    if (!amount || Number(amount) <= 0) {
-      newErrors.amount = "A valid payment amount is required";
+    if (!address) newErrors.address = "Address is required";
+    if (!dateOfBirth) newErrors.dateOfBirth = "Date of Birth is required";
+    
+    // Validate document uploads
+    if (!utilityBill || utilityBill.length === 0) {
+      newErrors.utilityBill = "Utility bill document is required";
+    }
+    if (!driverLicense || driverLicense.length === 0) {
+      newErrors.driverLicense = "Driver's license document is required";
     }
 
     // Card validation
     if (!cardNumber || meta.error) {
       newErrors.cardNumber = "Valid card number is required";
     }
-    if (!expiryDate || !/^\d{2}\/\d{2}$/.test(expiryDate)) {
-      newErrors.expiryDate = "Valid expiry date required (MM/YY)";
-    }
+    // if (!expiryDate || !/^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(expiryDate)) {
+    //   newErrors.expiryDate = "Valid expiry date required (MM/YY)";
+    // }
     if (!cvc || !/^\d{3,4}$/.test(cvc)) {
       newErrors.cvc = "Valid CVC required";
     }
@@ -238,8 +290,7 @@ const ContactPaymentForm = () => {
     // If meta.error exists, add it
     if (meta.error) newErrors.metaError = meta.error;
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return Object.keys(newErrors).length > 0 ? newErrors : null;
   };
 
   // Submit => Tokenize => Send to backend
@@ -247,36 +298,35 @@ const ContactPaymentForm = () => {
     e.preventDefault();
     if (!isAcceptReady || status === "loading") return;
 
-    const validationErrors = validateForm();
-    if (!validationErrors) {
-      setErrors({});
-      setMessage("Tokenizing payment data...");
+    try {
+      const validationErrors = validateForm();
+      if (!validationErrors) {
+        setErrors({});
+        setMessage("Processing your request...");
+        setStatus("loading");
 
-      const [month, year] = expiryDate.split("/");
-      if (!month || !year) {
-        setStatus("error");
-        setMessage("Invalid expiry date format.");
-        return;
-      }
+        const [month, year] = expiryDate.split("/");
+        if (!month || !year) {
+          throw new Error("Invalid expiry date format.");
+        }
 
-      // Create secureData for Accept.js
-      const secureData = {
-        authData: {
-          clientKey: PUBLIC_CLIENT_KEY,
-          apiLoginID: API_LOGIN_ID,
-        },
-        cardData: {
-          cardNumber: cardNumber.replace(/\s/g, ""),
-          month: month.trim(),
-          year: `20${year.trim()}`, // e.g. "24" => "2024"
-          cardCode: cvc,
-        },
-      };
+        const secureData = {
+          authData: {
+            clientKey: PUBLIC_CLIENT_KEY,
+            apiLoginID: API_LOGIN_ID,
+          },
+          cardData: {
+            cardNumber: cardNumber.replace(/\s/g, ""),
+            month: month.trim(),
+            year: `20${year.trim()}`,
+            cardCode: cvc,
+          },
+        };
 
-      try {
+        // Get payment token
         const acceptResponse: any = await new Promise((resolve, reject) => {
           if (!window.Accept?.dispatchData) {
-            return reject(new Error("Accept.js is not ready"));
+            throw new Error("Accept.js is not ready");
           }
           window.Accept.dispatchData(secureData, (response: any) => {
             if (response.messages.resultCode === "Error") {
@@ -287,33 +337,82 @@ const ContactPaymentForm = () => {
           });
         });
 
-        // Send token + form data to your backend
-        const backendRes = await fetch("/api/process-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            dataValue: acceptResponse.opaqueData.dataValue,
-            dataDescriptor: acceptResponse.opaqueData.dataDescriptor,
-            amount: Number(formData.amount).toFixed(2),
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            ssn: formData.ssn,
-            package: formData.package,
-            referralCode: formData.referralCode,
-          }),
-        });
-
-        if (!backendRes.ok) {
-          const errData = await backendRes.json();
-          throw new Error(errData.error || "Payment failed");
+        // Validate package selection
+        const selectedPackage = packageOptions.find(pkg => pkg.value === formData.package);
+        if (!selectedPackage) {
+          throw new Error("Invalid package selected");
         }
 
-        const result = await backendRes.json();
-        setStatus("success");
-        setMessage(`Payment successful! Transaction ID: ${result.transactionId}`);
+        // Validate and prepare files
+        const utilityBillFile = formData.utilityBill?.item(0);
+        const driverLicenseFile = formData.driverLicense?.item(0);
+        if (!utilityBillFile || !driverLicenseFile) {
+          throw new Error("Required documents are missing");
+        }
 
-        // Reset form if desired
+        // Handle file uploads
+        setIsUploading(true);
+        setUploadProgress({ utilityBill: 0, driverLicense: 0 });
+
+        const fileApiWithProgress = axios.create({
+          baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://lzx4063g-3003.inc1.devtunnels.ms',
+        });
+
+        const uploadFormData = new FormData();
+        uploadFormData.append('files', utilityBillFile);
+        uploadFormData.append('files', driverLicenseFile);
+        uploadFormData.append('isPublic', 'false');
+
+        const uploadResponse = await fileApiWithProgress.post('/media', uploadFormData, {
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const totalSize = utilityBillFile.size + driverLicenseFile.size;
+              const loadedSize = progressEvent.loaded;
+              
+              // Calculate individual progress based on file sizes
+              const utilityBillProgress = Math.round((loadedSize * utilityBillFile.size / totalSize) / utilityBillFile.size * 100);
+              const driverLicenseProgress = Math.round((loadedSize * driverLicenseFile.size / totalSize) / driverLicenseFile.size * 100);
+              
+              setUploadProgress({
+                utilityBill: Math.min(utilityBillProgress, 100),
+                driverLicense: Math.min(driverLicenseProgress, 100)
+              });
+            }
+          }
+        });
+
+        if (!uploadResponse.data.files || uploadResponse.data.files.length !== 2) {
+          throw new Error("Failed to upload all required documents");
+        }
+
+        const utilityBillUrl = uploadResponse.data.files[0]._id;
+        const driverLicenseUrl = uploadResponse.data.files[1]._id;
+
+        // Submit credit repair request
+        const creditRepairData = {
+          fullName: formData.name,
+          email: formData.email,
+          phoneNumber: '+18143512239',
+          referralCode: formData.referralCode || undefined,
+          address: formData.address,
+          socialSecurityNumber: formData.ssn,
+          dateofBirth: formData.dateOfBirth,
+          utilityBill: utilityBillUrl,
+          driverLicense: driverLicenseUrl,
+          packageType: formData.package,
+          packagePrice: selectedPackage.price,
+          dataValue: acceptResponse.opaqueData.dataValue,
+          dataDescriptor: acceptResponse.opaqueData.dataDescriptor
+        };
+
+        await submitCreditRepairRequest(creditRepairData);
+
+        // Success handling
+        setStatus("success");
+        setMessage("Your credit repair request has been submitted successfully!");
+        showSuccessToast("Your credit repair request has been submitted successfully!");
+
+        // Reset form
         setFormData({
           name: "",
           email: "",
@@ -323,29 +422,40 @@ const ContactPaymentForm = () => {
           package: "",
           utilityBill: null,
           driverLicense: null,
-          amount: "",
+          address: "",
+          dateOfBirth: "",
         });
         setCardNumber("");
         setExpiryDate("");
         setCvc("");
-      } catch (err: any) {
+        setIsUploading(false);
+
+      } else {
+        setErrors(validationErrors);
         setStatus("error");
-        setMessage(err.message || "Payment processing failed");
-      } finally {
-        setTimeout(() => setStatus("idle"), 5000);
+        setMessage("Please correct the errors above.");
+        showErrorToast("Please correct the errors above.");
       }
-    } else {
-      setErrors(validationErrors);
+    } catch (err: any) {
       setStatus("error");
-      setMessage("Please correct the errors above.");
+      const errorMessage = err.message || "Failed to process your request";
+      setMessage(errorMessage);
+      showErrorToast(errorMessage);
+      setIsUploading(false);
+    } finally {
+      setTimeout(() => setStatus("idle"), 5000);
     }
   };
 
+  // We no longer need the convertFileToBase64 function as we're using the uploadFiles API
+
   // Helper: Render a drag-and-drop area or the selected file with remove button
   const renderFileUpload = (fieldName: string, label: string, required: boolean = false) => {
-    const fileData = formData[fieldName];
+    const fileData = formData[fieldName] as FileList | null;
     const isFileSelected = fileData && fileData.length > 0;
     const inputId = fieldName + "Input";
+    const progress = uploadProgress[fieldName as keyof UploadProgress];
+    const showProgress = isUploading && isFileSelected && progress < 100;
 
     return (
       <div className="relative">
@@ -406,19 +516,35 @@ const ContactPaymentForm = () => {
 
         {/* If a file IS selected, show file name + remove button */}
         {isFileSelected && (
-          <div className="flex items-center justify-between border p-4 rounded bg-gray-50">
-            <div className="text-gray-800 text-sm">
-              {fileData[0]?.name || "Selected file"}
+          <div className="relative">
+            <div className="flex items-center justify-between border p-4 rounded bg-gray-50">
+              <div className="text-gray-800 text-sm">
+                {fileData[0]?.name || "Selected file"}
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData((prev) => ({ ...prev, [fieldName]: null }))
+                }
+                className="text-red-600 underline text-sm"
+                disabled={isUploading}
+              >
+                Remove
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                setFormData((prev) => ({ ...prev, [fieldName]: null }))
-              }
-              className="text-red-600 underline text-sm"
-            >
-              Remove
-            </button>
+            
+            {/* Progress bar */}
+            {showProgress && (
+              <div className="mt-2">
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1 text-right">{progress}% uploaded</p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -426,7 +552,7 @@ const ContactPaymentForm = () => {
   };
 
   return (
-    <section className="py-24 bg-white">
+    <section id="onboarding" className="py-24 bg-white">
       <div className="container px-5 mx-auto max-w-2xl">
         <div className="mb-8 text-center">
           {/* 1) Change heading to "Get Started Now" with font-['PT_Serif'] */}
@@ -521,14 +647,28 @@ const ContactPaymentForm = () => {
             />
           </div>
 
-          {/* Third Row: SSN and Referral Code */}
-          <div>
-            <label className="block mb-2 font-medium text-sky-950">
-              Social Security No *
-            </label>
+          {/* Third Row: Address */}
+          <div className="md:col-span-2">
+            <label className="block mb-2 font-medium text-sky-950">Address *</label>
+            <input
+              name="address"
+              type="text"
+              value={formData.address}
+              onChange={handleInputChange}
+              placeholder="1234 Main St, City, State, ZIP"
+              className="w-full px-4 py-2 border border-gray-300 rounded transition-colors
+                focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                text-gray-900"
+              required
+            />
+          </div>
+          
+          {/* Fourth Row: SSN */}
+          <div className="md:col-span-2">
+            <label className="block mb-2 font-medium text-sky-950">Social Security Number *</label>
             <input
               name="ssn"
-              type="password"
+              type="text"
               value={formData.ssn}
               onChange={handleInputChange}
               placeholder="123-45-6789"
@@ -538,20 +678,17 @@ const ContactPaymentForm = () => {
               required
             />
           </div>
-
-          <div>
-            <label className="block mb-2 font-medium text-sky-950">
-              Referral Code
-            </label>
+          <div className="md:col-span-2">
+            <label className="block mb-2 font-medium text-sky-950">Date of Birth *</label>
             <input
-              name="referralCode"
-              type="text"
-              value={formData.referralCode}
+              name="dateOfBirth"
+              type="date"
+              value={formData.dateOfBirth}
               onChange={handleInputChange}
-              placeholder="Enter referral code"
               className="w-full px-4 py-2 border border-gray-300 rounded transition-colors
                 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
                 text-gray-900"
+              required
             />
           </div>
 
@@ -585,22 +722,7 @@ const ContactPaymentForm = () => {
             </select>
           </div>
 
-          {/* If you need an Amount field */}
-          <div className="md:col-span-2">
-            <label className="block mb-2 font-medium text-sky-950">
-              Amount ($) *
-            </label>
-            <input
-              name="amount"
-              type="number"
-              step="0.01"
-              value={formData.amount}
-              onChange={handleInputChange}
-              placeholder="Enter amount"
-              className="w-full px-4 py-2 border border-gray-300 rounded text-gray-900"
-              required
-            />
-          </div>
+
 
           {/* Credit Card Fields */}
           <div className="md:col-span-2">
@@ -608,15 +730,20 @@ const ContactPaymentForm = () => {
               Credit / Debit Card *
             </label>
             <PaymentInputsContainer>
-              {({ wrapperProps }) => (
+              {({ wrapperProps }: { wrapperProps: React.HTMLAttributes<HTMLDivElement> }) => (
                 <div {...wrapperProps} className="grid grid-cols-12 gap-4">
                   <div className="col-span-1 flex items-center justify-center">
-                    <svg {...getCardImageProps({ images })} />
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                      <path
+                        fill="currentColor"
+                        d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"
+                      />
+                    </svg>
                   </div>
                   <div className="col-span-11 md:col-span-5">
-                    <input
+                    <InputWrapper
                       {...getCardNumberProps({
-                        onChange: (e) => setCardNumber(e.target.value),
+                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => setCardNumber(e.target.value),
                       })}
                       value={cardNumber}
                       className="w-full px-4 py-2 border border-gray-300 rounded text-gray-800
@@ -626,9 +753,9 @@ const ContactPaymentForm = () => {
                     />
                   </div>
                   <div className="col-span-6 md:col-span-3">
-                    <input
+                    <InputWrapper
                       {...getExpiryDateProps({
-                        onChange: (e) => setExpiryDate(e.target.value),
+                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => setExpiryDate(e.target.value),
                       })}
                       value={expiryDate}
                       className="w-full px-4 py-2 border border-gray-300 rounded text-gray-800
@@ -638,9 +765,9 @@ const ContactPaymentForm = () => {
                     />
                   </div>
                   <div className="col-span-6 md:col-span-3">
-                    <input
+                    <InputWrapper
                       {...getCVCProps({
-                        onChange: (e) => setCvc(e.target.value),
+                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => setCvc(e.target.value),
                       })}
                       value={cvc}
                       className="w-full px-4 py-2 border border-gray-300 rounded text-gray-800
@@ -669,7 +796,7 @@ const ContactPaymentForm = () => {
           {/* Terms and Submit Button */}
           <div className="md:col-span-2 text-sm text-neutral-600">
             <p>
-              By clicking "Fix My Credits Now," I confirm that I have read,
+              By clicking &quot;Fix My Credits Now,&quot; I confirm that I have read,
               understood, and accepted the foregoing terms and agree to be bound
               by them.
             </p>
@@ -699,4 +826,4 @@ const ContactPaymentForm = () => {
   );
 };
 
-export default ContactPaymentForm;
+export default OnboardingForm;

@@ -1,5 +1,6 @@
 'use client';
 import { CircleArrowRight } from 'lucide-react';
+import Image from 'next/image';
 
 export const ContactHero = () => {
   return (
@@ -30,11 +31,12 @@ export const ContactHero = () => {
             </p>
 
             {/* Smaller Image at the bottom-left */}
-            <div className="mt-8 pl-4">
-              <img
+            <div className="mt-8 pl-4 relative h-[300px] max-w-sm">
+              <Image
                 src="/images/contact-1.jpg"
                 alt="Team high-fiving to celebrate success"
-                className="w-full max-w-sm rounded-lg shadow"
+                fill
+                className="rounded-lg shadow object-cover"
               />
             </div>
           </div>
@@ -42,11 +44,12 @@ export const ContactHero = () => {
           {/* Right Column */}
           <div>
             {/* Large Image (Woman at desk) */}
-            <div className="mb-12">
-              <img
+            <div className="mb-12 relative h-[400px]">
+              <Image
                 src="/images/contact-2.jpg"
                 alt="Professional woman at her desk"
-                className="w-full h-auto rounded-lg shadow"
+                fill
+                className="rounded-lg shadow object-cover"
               />
             </div>
 

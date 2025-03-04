@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { fadeIn } from "@/utils/animations";
+import Image from "next/image";
 
 export const UnlockPotential = () => {
   return (
@@ -20,13 +21,13 @@ export const UnlockPotential = () => {
             </h2>
             <p className="text-lg sm:text-xl text-gray-700 leading-relaxed font-montserrat text-center lg:text-left mb-8">
               Are you ready to take control of your financial future? At Mulligan Credit Repair, 
-              we understand that life happens. Whether it's unexpected medical bills, job loss, 
+              we understand that life happens. Whether it&apos;s unexpected medical bills, job loss, 
               or any unforeseen circumstance, your credit score can take a hit. 
-              But don't worry – a better financial future is within your reach.
+              But don&apos;t worry &ndash; a better financial future is within your reach.
             </p>
             <div className="text-center lg:text-left">
               <a 
-                href="#contact"
+                href="#onboarding"
                 className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 transition-all rounded-md"
                 role="button"
                 aria-label="Start your credit repair journey"
@@ -43,18 +44,20 @@ export const UnlockPotential = () => {
             role="presentation"
           >
             <div className="w-full sm:w-[250px] h-[300px] sm:h-[320px] relative rounded-lg overflow-hidden shadow-lg sm:mt-72">
-              <img
+              <Image
                 src="/images/wall-outdoor.jpg"
                 alt="Professional office building exterior representing stability and success"
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
                 loading="lazy"
               />
             </div>
             <div className="w-full sm:w-[480px] h-[300px] sm:h-[420px] relative rounded-lg overflow-hidden shadow-lg">
-              <img
+              <Image
                 src="/images/handshake.webp"
                 alt="Business handshake symbolizing trust and partnership in credit repair journey"
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
                 loading="lazy"
               />
             </div>
