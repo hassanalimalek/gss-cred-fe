@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { PaymentInputsContainer } from "react-payment-inputs";
 import { usePaymentInputs } from "react-payment-inputs";
-import { submitCreditRepairRequest, CreditRepairRequest, uploadFiles } from "../../lib/api";
+import { submitCreditRepairRequest } from "../../lib/api";
 import { showSuccessToast, showErrorToast } from "@/utils/toast";
 import axios from 'axios';
 
@@ -20,7 +20,7 @@ declare global {
 }
 
 // Helper component to filter out the isTouched prop and other non-standard HTML attributes
-const InputWrapper = ({ isTouched, ...props }: { isTouched?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) => {
+const InputWrapper = ({ ...props }: React.InputHTMLAttributes<HTMLInputElement>) => {
   // Properly filter out the isTouched prop before passing props to the DOM element
   // The destructuring above already removes isTouched from props
   return <input {...props} />;
@@ -258,7 +258,7 @@ const OnboardingForm = () => {
   // Validate
   const validateForm = (): FormErrors | null => {
     const newErrors: FormErrors = {};
-    const { name, email, phone, ssn, package: pkg, address, dateOfBirth, utilityBill, driverLicense } = formData;
+    const { name, email, package: pkg, address, dateOfBirth, utilityBill, driverLicense } = formData;
 
     if (!name) newErrors.name = "Name is required";
     if (!email || !/\S+@\S+\.\S+/.test(email)) {

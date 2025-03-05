@@ -1,4 +1,4 @@
-import toast, { Toast, ToastOptions } from 'react-hot-toast';
+import toast, { ToastOptions } from 'react-hot-toast';
 
 // Default toast options for consistent styling
 const defaultOptions: ToastOptions = {

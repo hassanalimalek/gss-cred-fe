@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 
 /**
  * Creates a fade-in animation with customizable direction and delay
@@ -32,14 +33,14 @@ export const TakeFirstStep = () => {
               Our proven process and dedicated team are ready to help you achieve the credit score you deserve.
             </p>
             <div className="text-center lg:text-left">
-              <a
+              <Link
                 href="/#onboarding"
                 className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md transition-colors duration-300 min-h-[44px] min-w-[44px]"
                 role="button"
                 aria-label="Start your credit repair journey"
               >
                 Start Your Journey
-              </a>
+              </Link>
             </div>
           </motion.div>
 

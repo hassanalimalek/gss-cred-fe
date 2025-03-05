@@ -51,7 +51,7 @@ export const OurCommitment = () => {
 
               {/* First Paragraph */}
               <p className="text-gray-600 text-lg sm:text-xl leading-relaxed mb-8 px-4 sm:px-6">
-                At Mulligan Credit Repair, we believe in a client-first approach. Our team of dedicated professionals works tirelessly to ensure that you receive the highest quality of service. We understand that each client's financial situation is unique, and we tailor our credit repair strategies to meet your specific needs.
+                At Mulligan Credit Repair, we believe in a client-first approach. Our team of dedicated professionals works tirelessly to ensure that you receive the highest quality of service. We understand that each client&apos;s financial situation is unique, and we tailor our credit repair strategies to meet your specific needs.
               </p>
 
               {/* Centralized Golden Line */}

@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { CheckCircle } from 'lucide-react';
+import Link from 'next/link';
 
 interface StepProps {
   number: number;
@@ -104,8 +105,8 @@ export const ProcessSteps = () => {
             Our Credit Repair Process
           </h2>
           <p className="text-lg text-gray-700 max-w-3xl mx-auto">
-            We've simplified the credit repair process to make it easy for you to understand and follow. 
-            Here's how we'll work together to improve your credit score.
+            We&apos;ve simplified the credit repair process to make it easy for you to understand and follow. 
+            Here&apos;s how we&apos;ll work together to improve your credit score.
           </p>
         </motion.div>
 
@@ -128,13 +129,13 @@ export const ProcessSteps = () => {
           transition={{ duration: 0.8, delay: 0.8 }}
           className="mt-16 text-center"
         >
-          <a
+          <Link
             href="/#onboarding"
             className="inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 transition-all rounded-md"
             role="button"
           >
             Start Your Credit Repair Today
-          </a>
+          </Link>
         </motion.div>
       </div>
     </section>

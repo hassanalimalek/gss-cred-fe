@@ -14,10 +14,6 @@ const ProcessSteps = dynamic(
   () => import('@/components/sections/ProcessSteps').then(mod => ({ default: mod.ProcessSteps })),
   { ssr: false }
 );
-const TakeFirstStep = dynamic(
-  () => import('@/components/sections/TakeFirstStep').then(mod => ({ default: mod.TakeFirstStep })),
-  { ssr: false }
-);
 
 export default function HowItWorks() {
   useHashNavigation();
