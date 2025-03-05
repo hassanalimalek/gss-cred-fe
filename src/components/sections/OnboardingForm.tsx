@@ -246,6 +246,12 @@ const OnboardingForm = () => {
   const handleFileSelect = (fieldName: string) => (files: FileList | null) => {
     if (files && files.length > 0) {
       setFormData((prev) => ({ ...prev, [fieldName]: files }));
+      // Clear the error for this field when a file is selected
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldName];
+        return newErrors;
+      });
     }
   };
 
@@ -258,31 +264,24 @@ const OnboardingForm = () => {
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = "Valid email is required";
     }
-    // if (!phone || !/^\+?[0-9\s\-\(\)]{10,15}$/.test(phone)) {
-    //   newErrors.phone = "Valid phone number is required";
-    // }
-    // if (!ssn || !/^\d{3}-?\d{2}-?\d{4}$/.test(ssn)) {
-    //   newErrors.ssn = "Valid SSN is required (format: 123-45-6789)";
-    // }
+
     if (!pkg) newErrors.package = "Please select a package";
     if (!address) newErrors.address = "Address is required";
     if (!dateOfBirth) newErrors.dateOfBirth = "Date of Birth is required";
     
-    // Validate document uploads
+    // Updated file validation logic
     if (!utilityBill || utilityBill.length === 0) {
-      newErrors.utilityBill = "Utility bill document is required";
+      newErrors.utilityBill = "Please upload a utility bill document";
     }
+
     if (!driverLicense || driverLicense.length === 0) {
-      newErrors.driverLicense = "Driver's license document is required";
+      newErrors.driverLicense = "Please upload a driver's license document";
     }
 
     // Card validation
     if (!cardNumber || meta.error) {
       newErrors.cardNumber = "Valid card number is required";
     }
-    // if (!expiryDate || !/^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(expiryDate)) {
-    //   newErrors.expiryDate = "Valid expiry date required (MM/YY)";
-    // }
     if (!cvc || !/^\d{3,4}$/.test(cvc)) {
       newErrors.cvc = "Valid CVC required";
     }
@@ -456,6 +455,7 @@ const OnboardingForm = () => {
     const inputId = fieldName + "Input";
     const progress = uploadProgress[fieldName as keyof UploadProgress];
     const showProgress = isUploading && isFileSelected && progress < 100;
+    const error = errors[fieldName];
 
     return (
       <div className="relative">
@@ -466,7 +466,7 @@ const OnboardingForm = () => {
         {/* If NO file is selected, show drag-and-drop */}
         {!isFileSelected && (
           <div
-            className="w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors cursor-pointer flex flex-col items-center justify-center bg-gray-50"
+            className={`w-full px-4 py-8 border-2 border-dashed rounded-lg hover:border-blue-500 transition-colors cursor-pointer flex flex-col items-center justify-center bg-gray-50 ${error ? 'border-red-500' : 'border-gray-300'}`}
             onClick={() => document.getElementById(inputId)?.click()}
             onDragOver={(e) => {
               e.preventDefault();
@@ -484,7 +484,7 @@ const OnboardingForm = () => {
             }}
           >
             <svg
-              className="w-8 h-8 mb-4 text-gray-500"
+              className={`w-8 h-8 mb-4 ${error ? 'text-red-500' : 'text-gray-500'}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -497,54 +497,52 @@ const OnboardingForm = () => {
                   a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="mb-2 text-sm text-gray-500">
+            <p className={`mb-2 text-sm ${error ? 'text-red-500' : 'text-gray-500'}`}>
               Click to upload or drag and drop
             </p>
-            <p className="text-xs text-gray-500">
+            <p className={`text-xs ${error ? 'text-red-500' : 'text-gray-500'}`}>
               PDF, PNG, JPG or JPEG (MAX. 10MB)
             </p>
-            <input
-              id={inputId}
-              type="file"
-              className="hidden"
-              onChange={(e) => handleFileSelect(fieldName)(e.target.files)}
-              accept=".pdf,.png,.jpg,.jpeg"
-              required={required}
-            />
+            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
           </div>
         )}
 
-        {/* If a file IS selected, show file name + remove button */}
-        {isFileSelected && (
-          <div className="relative">
-            <div className="flex items-center justify-between border p-4 rounded bg-gray-50">
-              <div className="text-gray-800 text-sm">
-                {fileData[0]?.name || "Selected file"}
-              </div>
+        <input
+          id={inputId}
+          type="file"
+          className="hidden"
+          onChange={(e) => handleFileSelect(fieldName)(e.target.files)}
+          accept=".pdf,.png,.jpg,.jpeg"
+          aria-invalid={error ? 'true' : 'false'}
+        />
+
+        {/* If file IS selected, show file info */}
+        {isFileSelected && fileData[0] && (
+          <div className={`p-4 border rounded-lg ${error ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-black truncate">{fileData[0].name}</span>
               <button
                 type="button"
-                onClick={() =>
-                  setFormData((prev) => ({ ...prev, [fieldName]: null }))
-                }
-                className="text-red-600 underline text-sm"
-                disabled={isUploading}
+                onClick={() => {
+                  setFormData(prev => ({
+                    ...prev,
+                    [fieldName]: null
+                  }));
+                }}
+                className="text-red-500 hover:text-red-700"
               >
                 Remove
               </button>
             </div>
-            
-            {/* Progress bar */}
             {showProgress && (
-              <div className="mt-2">
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div 
-                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
-                    style={{ width: `${progress}%` }}
-                  ></div>
-                </div>
-                <p className="text-xs text-gray-500 mt-1 text-right">{progress}% uploaded</p>
+              <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className="bg-blue-600 h-2.5 rounded-full"
+                  style={{ width: `${progress}%` }}
+                ></div>
               </div>
             )}
+            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
           </div>
         )}
       </div>
@@ -568,31 +566,9 @@ const OnboardingForm = () => {
           </p>
         </div>
 
-        {/* Error list */}
-        {Object.keys(errors).length > 0 && (
-          <div className="mb-4 p-4 bg-red-100 text-red-800 rounded">
-            <ul className="list-disc list-inside">
-              {Object.keys(errors).map((err, idx) => (
-                <li key={idx}>{errors[err]}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+       
 
-        {/* General message */}
-        {message && (
-          <div
-            className={`mb-4 p-4 rounded ${
-              status === "success"
-                ? "bg-green-100 text-green-800"
-                : status === "error"
-                ? "bg-red-100 text-red-800"
-                : "bg-blue-100 text-blue-800"
-            }`}
-          >
-            {message}
-          </div>
-        )}
+     
 
         <form
           onSubmit={handleSubmit}
@@ -808,6 +784,31 @@ const OnboardingForm = () => {
               .
             </p>
           </div>
+
+        {/* General message */}
+        {message && (
+          <div
+            className={`mb-4 p-4 rounded ${
+              status === "success"
+                ? "bg-green-100 text-green-800"
+                : status === "error"
+                ? "bg-red-100 text-red-800"
+                : "bg-blue-100 text-blue-800"
+            }`}
+          >
+            {message}
+          </div>
+        )}
+           {/* Error list */}
+          {Object.keys(errors).length > 0 && (
+            <div className="mb-4 p-4 bg-red-100 text-red-800 rounded">
+              <ul className="list-disc list-inside">
+                {Object.keys(errors).map((err, idx) => (
+                  <li key={idx}>{errors[err]}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="md:col-span-2">
             <button

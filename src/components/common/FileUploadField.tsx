@@ -107,7 +107,7 @@ export const FileUploadField: React.FC<FileUploadFieldProps> = ({
       {/* If a file IS selected, show file name + remove button */}
       {isFileSelected && (
         <div className="flex items-center justify-between border p-4 rounded bg-gray-50">
-          <div className="text-gray-800 text-sm">
+          <div className="text-black font-medium text-sm">
             {value[0]?.name || "Selected file"}
           </div>
           <button
