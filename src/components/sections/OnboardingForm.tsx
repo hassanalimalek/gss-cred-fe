@@ -409,7 +409,7 @@ const OnboardingForm = () => {
         // Success handling
         setStatus("success");
         setMessage("Your credit repair request has been submitted successfully!");
-        showSuccessToast("Your credit repair request has been submitted successfully!");
+        showSuccessToast("Your credit repair request has been submitted successfully. You will be contacted by us shortly.");
 
         // Reset form
         setFormData({
@@ -432,8 +432,8 @@ const OnboardingForm = () => {
       } else {
         setErrors(validationErrors);
         setStatus("error");
-        setMessage("Please correct the errors above.");
-        showErrorToast("Please correct the errors above.");
+        setMessage("Please correct the errors.");
+        showErrorToast("Please correct the errors.");
       }
     } catch (err: any) {
       setStatus("error");
@@ -594,17 +594,35 @@ const OnboardingForm = () => {
 
           <div>
             <label className="block mb-2 font-medium text-sky-950">Phone *</label>
-            <input
-              name="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={handleInputChange}
-              placeholder="+1 300 400 5000"
-              className="w-full px-4 py-2 border border-gray-300 rounded transition-colors
-                focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                text-gray-900"
-              required
-            />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <span className="text-gray-500">+1</span>
+              </div>
+              <input
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => {
+                  // Remove any non-digit characters and limit to 10 digits
+                  const cleaned = e.target.value.replace(/[^\d]/g, '').substring(0, 10);
+                  handleInputChange({
+                    ...e,
+                    target: {
+                      ...e.target,
+                      name: 'phone',
+                      value: cleaned
+                    }
+                  });
+                }}
+                placeholder="8143512239"
+                className="w-full pl-10 px-4 py-2 border border-gray-300 rounded transition-colors
+                  focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                  text-gray-900"
+                maxLength={10}
+                required
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Format: +18143512239 (10 digits only)</p>
           </div>
 
           {/* Second Row: Full-width Email */}
@@ -785,30 +803,35 @@ const OnboardingForm = () => {
             </p>
           </div>
 
-        {/* General message */}
+        {/* General message - Make it full width */}
         {message && (
-          <div
-            className={`mb-4 p-4 rounded ${
-              status === "success"
-                ? "bg-green-100 text-green-800"
-                : status === "error"
-                ? "bg-red-100 text-red-800"
-                : "bg-blue-100 text-blue-800"
-            }`}
-          >
-            {message}
+          <div className="md:col-span-2">
+            <div
+              className={`mb-0 p-4 rounded w-full ${
+                status === "success"
+                  ? "bg-green-100 text-green-800"
+                  : status === "error"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-blue-100 text-blue-800"
+              }`}
+            >
+              {message}
+            </div>
           </div>
         )}
-           {/* Error list */}
-          {Object.keys(errors).length > 0 && (
-            <div className="mb-4 p-4 bg-red-100 text-red-800 rounded">
+        
+        {/* Error list - In its own div below the message */}
+        {Object.keys(errors).length > 0 && (
+          <div className="md:col-span-2">
+            <div className="mb-2 p-4 bg-red-100 text-red-800 rounded">
               <ul className="list-disc list-inside">
                 {Object.keys(errors).map((err, idx) => (
                   <li key={idx}>{errors[err]}</li>
                 ))}
               </ul>
             </div>
-          )}
+          </div>
+        )}
 
           <div className="md:col-span-2">
             <button

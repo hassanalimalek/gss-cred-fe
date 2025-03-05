@@ -36,6 +36,9 @@ export const ContactSection = () => {
   // State for form submission status
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   
+  // State for error message
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -43,6 +46,11 @@ export const ContactSection = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear error message when user starts typing
+    if (errorMessage) {
+      setErrorMessage(null);
+    }
   };
   
   // Handle form submission
@@ -51,25 +59,43 @@ export const ContactSection = () => {
     
     // Validate form data
     if (!formData.fullName || !formData.email || !formData.description) {
+      setErrorMessage("Please fill in all required fields.");
       showErrorToast("Please fill in all required fields.");
+      return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setErrorMessage("Please enter a valid email address.");
+      showErrorToast("Please enter a valid email address.");
       return;
     }
     
     // Update status to loading
     setStatus("loading");
+    setErrorMessage(null);
     
     try {
+      // Format phone number to ensure it has +1 prefix and exactly 10 digits
+      const formattedPhone = formData.phoneNumber ? 
+        (formData.phoneNumber.length === 10 ? `+1${formData.phoneNumber}` : '') : 
+        '';
+      
       // Prepare submission data
       const submissionData: VisitorSubmission = {
         fullName: formData.fullName,
         email: formData.email,
-        phoneNumber: formData.phoneNumber,
+        phoneNumber: formattedPhone,
         subject: formData.subject || "Contact Form Submission",
         description: formData.description
       };
       
+      console.log("Submitting data from updates page:", submissionData);
+      
       // Submit the data to the API
-      await submitVisitorRequest(submissionData);
+      const response = await submitVisitorRequest(submissionData);
+      console.log("API response from updates page:", response);
       
       // Update status and show success message
       setStatus("success");
@@ -84,14 +110,18 @@ export const ContactSection = () => {
         description: ""
       });
       
-    } catch (error) {
+    } catch (error: any) {
       // Handle error
       setStatus("error");
-      showErrorToast("Failed to send your message. Please try again later.");
+      const message = error.message || "Failed to send your message. Please try again later.";
+      setErrorMessage(message);
+      showErrorToast(message);
       console.error("Contact form submission error:", error);
     } finally {
-      // Reset status after delay
-      setTimeout(() => setStatus("idle"), 2000);
+      // Reset status after delay for success state
+      if (status === "success") {
+        setTimeout(() => setStatus("idle"), 3000);
+      }
     }
   };
 
@@ -122,8 +152,22 @@ export const ContactSection = () => {
               Ask Us Anything, Anytime.
             </h2>
             <p className="text-lg text-gray-700 mb-8">
-              Collect visitor&apos;s submissions and store them directly in your Elementor account, or integrate your favorite marketing & CRM tools.
+              Have a question about our credit repair services? We're here to help! Fill out the form below and our team will get back to you as soon as possible.
             </p>
+
+            {/* Display error message if any */}
+            {errorMessage && (
+              <div className="p-4 mb-6 bg-red-100 text-red-700 rounded-md">
+                {errorMessage}
+              </div>
+            )}
+            
+            {/* Display success message */}
+            {status === "success" && (
+              <div className="p-4 mb-6 bg-green-100 text-green-700 rounded-md">
+                Your message has been sent successfully! We'll get back to you soon.
+              </div>
+            )}
 
             {/* Contact form with responsive grid layout */}
             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -154,14 +198,32 @@ export const ContactSection = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    placeholder="Phone"
-                    className="w-full px-4 py-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent text-gray-900"
-                  />
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                      <span className="text-gray-500">+1</span>
+                    </div>
+                    <input
+                      type="tel"
+                      name="phoneNumber"
+                      value={formData.phoneNumber}
+                      onChange={(e) => {
+                        // Remove any non-digit characters and limit to 10 digits
+                        const cleaned = e.target.value.replace(/[^\d]/g, '').substring(0, 10);
+                        handleChange({
+                          ...e,
+                          target: {
+                            ...e.target,
+                            name: 'phoneNumber',
+                            value: cleaned
+                          }
+                        });
+                      }}
+                      placeholder="8143512239"
+                      maxLength={10}
+                      className="w-full pl-10 px-4 py-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent text-gray-900"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">Format: +1 followed by 10 digits</p>
                 </div>
                 <div>
                   <input

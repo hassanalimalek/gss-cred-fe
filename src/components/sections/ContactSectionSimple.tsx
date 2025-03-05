@@ -17,6 +17,9 @@ export const ContactSectionSimple = () => {
   // State for form submission status
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   
+  // State for error message
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -24,6 +27,11 @@ export const ContactSectionSimple = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear error message when user starts typing
+    if (errorMessage) {
+      setErrorMessage(null);
+    }
   };
   
   // Handle form submission
@@ -32,25 +40,47 @@ export const ContactSectionSimple = () => {
     
     // Validate form data
     if (!formData.fullName || !formData.email || !formData.description) {
+      setErrorMessage("Please fill in all required fields.");
       showErrorToast("Please fill in all required fields.");
+      return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setErrorMessage("Please enter a valid email address.");
+      showErrorToast("Please enter a valid email address.");
       return;
     }
     
     // Update status to loading
     setStatus("loading");
+    setErrorMessage(null);
     
     try {
+      console.log("Raw phone number:", formData.phoneNumber);
+      
+      // Format phone number to ensure it has +1 prefix
+      const formattedPhone = formData.phoneNumber && formData.phoneNumber.length > 0 ? 
+        (formData.phoneNumber.length === 10 ? `+1${formData.phoneNumber}` : formData.phoneNumber) : 
+        '';
+      
+      console.log("Formatted phone number:", formattedPhone);
+      
       // Prepare submission data
       const submissionData: VisitorSubmission = {
         fullName: formData.fullName,
         email: formData.email,
-        phoneNumber: formData.phoneNumber,
+        phoneNumber: formattedPhone,
         subject: formData.subject || "Contact Form Submission",
         description: formData.description
       };
       
+      console.log("Submitting data:", submissionData);
+      
       // Submit the data to the API
-      await submitVisitorRequest(submissionData);
+      const response = await submitVisitorRequest(submissionData);
+      console.log("API response:", response);
       
       // Update status and show success message
       setStatus("success");
@@ -65,23 +95,21 @@ export const ContactSectionSimple = () => {
         description: ""
       });
       
-    } catch (error) {
+    } catch (error: any) {
       // Handle error
       setStatus("error");
-      showErrorToast("Failed to send your message. Please try again later.");
+      const message = error.message || "Failed to send your message. Please try again later.";
+      setErrorMessage(message);
+      showErrorToast(message);
       console.error("Contact form submission error:", error);
     } finally {
       // Reset status after delay
-      setTimeout(() => setStatus("idle"), 2000);
+      setTimeout(() => {
+        if (status === "loading" || status === "success") {
+          setStatus("idle");
+        }
+      }, 3000);
     }
-    
-    // Ensure status is reset to idle if something goes wrong
-    // This is a safety measure in case the finally block doesn't execute properly
-    setTimeout(() => {
-      if (status === "loading") {
-        setStatus("idle");
-      }
-    }, 5000);
   };
 
   return (
@@ -123,7 +151,21 @@ export const ContactSectionSimple = () => {
           {/* Right Column: Contact Form */}
           <div>
             <form className="space-y-4" onSubmit={handleSubmit}>
-              {/* Name + Email in two columns on larger screens */}
+              {/* Display error message if any */}
+              {errorMessage && (
+                <div className="p-3 bg-red-100 text-red-700 rounded">
+                  {errorMessage}
+                </div>
+              )}
+              
+              {/* Display success message */}
+              {status === "success" && (
+                <div className="p-3 bg-green-100 text-green-700 rounded">
+                  Your message has been sent successfully! We'll get back to you soon.
+                </div>
+              )}
+            
+              {/* Name + Phone in two columns on larger screens */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input
                   type="text"
@@ -131,20 +173,41 @@ export const ContactSectionSimple = () => {
                   value={formData.fullName}
                   onChange={handleChange}
                   placeholder="Full Name"
-                  className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-yellow-600 text-black"
+                  className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-yellow-600 text-black"
                   required
                 />
-                <input
-                  type="tel"
-                  name="phoneNumber"
-                  value={formData.phoneNumber}
-                  onChange={handleChange}
-                  placeholder="Phone"
-                  className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-yellow-600 text-black"
-                />
+                <div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                      <span className="text-gray-500">+1</span>
+                    </div>
+                    <input
+                      type="tel"
+                      name="phoneNumber"
+                      value={formData.phoneNumber}
+                      onChange={(e) => {
+                        // Remove any non-digit characters and limit to 10 digits
+                        const cleaned = e.target.value.replace(/[^\d]/g, '').substring(0, 10);
+                        console.log("Phone input changed:", cleaned);
+                        handleChange({
+                          ...e,
+                          target: {
+                            ...e.target,
+                            name: 'phoneNumber',
+                            value: cleaned
+                          }
+                        });
+                      }}
+                      placeholder="8143512239"
+                      maxLength={10}
+                      className="w-full pl-10 px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-yellow-600 text-black"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">Format: +1 followed by 10 digits</p>
+                </div>
               </div>
 
-              {/* Email field - Added */}
+              {/* Email field */}
               <input
                 type="email"
                 name="email"
@@ -182,7 +245,7 @@ export const ContactSectionSimple = () => {
                 disabled={status === "loading"}
                 className={`${
                   status === "loading" ? "bg-gray-400" : "bg-yellow-600 hover:bg-yellow-700"
-                } text-white font-bold px-8 py-3 rounded transition-colors flex items-center justify-center`}
+                } text-white font-bold px-8 py-3 rounded transition-colors flex items-center justify-center w-full`}
               >
                 {status === "loading" ? (
                   <>

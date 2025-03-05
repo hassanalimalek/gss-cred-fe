@@ -4,6 +4,7 @@ import { testimonials } from '@/data/testimonials';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { fadeIn } from '@/utils/animations';
+import Link from 'next/link';
 
 export default function TestimonialsPage() {
   return (
@@ -65,12 +66,12 @@ export default function TestimonialsPage() {
           <p className="text-lg mb-8 max-w-2xl mx-auto">
             Join our satisfied clients and take the first step toward financial freedom today.
           </p>
-          <a
-            href="/contact"
+          <Link
+            href="/#onboarding"
             className="inline-block bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-8 rounded-lg transition-colors duration-300"
           >
             Get Started Now
-          </a>
+          </Link>
         </div>
       </section>
     </main>

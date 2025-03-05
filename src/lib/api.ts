@@ -62,11 +62,27 @@ export const submitCreditRepairRequest = async (data: CreditRepairRequest) => {
 // Function to submit visitor request
 export const submitVisitorRequest = async (data: VisitorSubmission) => {
   try {
-    const response = await api.post('/credit-repair-requests/visitor-submission', data);
+    // Ensure phone number is properly formatted
+    const formattedData = {
+      ...data,
+      phoneNumber: data.phoneNumber && data.phoneNumber.trim() !== '' ? 
+        (data.phoneNumber.startsWith('+1') ? data.phoneNumber : `+1${data.phoneNumber}`) : 
+        '+10000000000' // Default phone number if empty
+    };
+    
+    console.log("Sending visitor submission to API:", formattedData);
+    const response = await api.post('/credit-repair-requests/visitor-submission', formattedData);
+    console.log("Visitor submission response:", response.data);
     return response.data;
   } catch (error) {
+    console.error("Error in submitVisitorRequest:", error);
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data?.message || 'Failed to submit visitor request');
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          'Failed to submit visitor request';
+      console.error("API error details:", error.response?.data);
+      throw new Error(errorMessage);
     }
     throw error;
   }
