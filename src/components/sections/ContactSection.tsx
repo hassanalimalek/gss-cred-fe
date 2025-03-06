@@ -99,7 +99,7 @@ export const ContactSection = () => {
       
       // Update status and show success message
       setStatus("success");
-      showSuccessToast("Your message has been sent successfully! We'll get back to you soon.");
+      showSuccessToast("Your message has been sent successfully! We&apos;ll get back to you soon.");
       
       // Reset form
       setFormData({
@@ -152,7 +152,7 @@ export const ContactSection = () => {
               Ask Us Anything, Anytime.
             </h2>
             <p className="text-lg text-gray-700 mb-8">
-              Have a question about our credit repair services? We're here to help! Fill out the form below and our team will get back to you as soon as possible.
+              Have a question about our credit repair services? We&apos;re here to help! Fill out the form below and our team will get back to you as soon as possible.
             </p>
 
             {/* Display error message if any */}
@@ -165,7 +165,7 @@ export const ContactSection = () => {
             {/* Display success message */}
             {status === "success" && (
               <div className="p-4 mb-6 bg-green-100 text-green-700 rounded-md">
-                Your message has been sent successfully! We'll get back to you soon.
+                Your message has been sent successfully! We&apos;ll get back to you soon.
               </div>
             )}
 

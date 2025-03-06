@@ -84,7 +84,7 @@ export const ContactSectionSimple = () => {
       
       // Update status and show success message
       setStatus("success");
-      showSuccessToast("Your message has been sent successfully! We'll get back to you soon.");
+      showSuccessToast("Your message has been sent successfully! We&apos;ll get back to you soon.");
       
       // Reset form
       setFormData({
@@ -161,7 +161,7 @@ export const ContactSectionSimple = () => {
               {/* Display success message */}
               {status === "success" && (
                 <div className="p-3 bg-green-100 text-green-700 rounded">
-                  Your message has been sent successfully! We'll get back to you soon.
+                  Your message has been sent successfully! We&apos;ll get back to you soon.
                 </div>
               )}
             
