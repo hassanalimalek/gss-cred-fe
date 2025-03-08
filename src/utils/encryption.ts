@@ -15,6 +15,8 @@
 
 import CryptoJS from 'crypto-js';
 import JSEncrypt from 'jsencrypt';
+import * as forge from 'node-forge';
+import { EncryptedPayload } from '../types/api';
 
 /**
  * Encrypt sensitive data using hybrid encryption (RSA + AES)
@@ -68,49 +70,111 @@ export const encryptFields = <T extends Record<string, any>, K extends keyof T>(
  * Legacy function maintained for backward compatibility
  */
 export const encryptData = (data: string): string => {
-  if (!data) return data;
-  
-  // Log to error tracking service in production instead of console warnings
-  
   try {
+    if (!data) return data;
+    
+    // DEPRECATED: This uses a hard-coded key and is not secure
+    // Only kept for backward compatibility with older code
     return CryptoJS.AES.encrypt(data, 'deprecated-key').toString();
-  } catch (error) {
-    // Log to error tracking service in production instead of console errors
-    return data; // Fallback to unencrypted data on error
+  } catch (_error) {
+    // Log to error tracking service in production instead of console
+    return data; // Fallback to unencrypted data on error for backward compatibility
   }
 };
 
 /**
- * @deprecated Decryption should happen server-side only
- * Legacy function maintained for backward compatibility
+ * Decrypt data that was encrypted with the encryptData function
+ * 
+ * @deprecated Use secure encryption instead
+ * @param encryptedData - The encrypted data string
+ * @returns Decrypted data
  */
 export const decryptData = (encryptedData: string): string => {
   if (!encryptedData) return encryptedData;
   
-  // Log to error tracking service in production instead of console warnings
-  
   try {
+    // DEPRECATED: This uses a hard-coded key and is not secure
+    // Only kept for backward compatibility with older code
     const bytes = CryptoJS.AES.decrypt(encryptedData, 'deprecated-key');
     return bytes.toString(CryptoJS.enc.Utf8);
-  } catch (error) {
-    // Log to error tracking service in production instead of console errors
-    return encryptedData; // Return the original data on error
+  } catch (_error) {
+    // Log to error tracking service in production instead of console
+    return encryptedData; // Return the original data on error for backward compatibility
   }
 };
 
 /**
+ * Hash data using SHA-256
+ * 
  * @deprecated Use secure encryption instead of hashing
- * Legacy function maintained for backward compatibility
+ * @param data - Data to hash
+ * @returns Hashed data
  */
 export const hashData = (data: string): string => {
-  if (!data) return data;
-  
-  // Log to error tracking service in production instead of console warnings
-  
   try {
+    if (!data) return '';
     return CryptoJS.SHA256(data).toString();
-  } catch (error) {
-    // Log to error tracking service in production instead of console errors
-    return data; // Fallback to original data on error
+  } catch (_error) {
+    // Log to error tracking service in production instead of console
+    return ''; // Return empty string on error
+  }
+};
+
+/**
+ * Encrypt the entire form data object using hybrid encryption (RSA + AES)
+ * 
+ * This function follows the backend's expected format:
+ * {
+ *   "encryptedAesKey": "encrypted_aes_key",
+ *   "sessionId": "session_id",
+ *   "encryptedData": "encrypted_data"
+ * }
+ * 
+ * Uses OAEP padding for RSA encryption to match the backend's decryption method
+ * 
+ * @param data - Object containing all form data
+ * @param publicKey - RSA public key from server
+ * @param sessionId - Session ID for the encryption session
+ * @returns Encrypted payload ready for transmission in the format required by the backend
+ */
+export const encryptFormData = (
+  data: any,
+  publicKey: string, 
+  sessionId: string
+): EncryptedPayload => {
+  try {
+    // Generate random AES key (32 bytes = 256 bits)
+    const aesKey = CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Hex);
+    
+    // Convert data object to JSON string
+    const jsonData = JSON.stringify(data);
+    
+    // Encrypt the entire data string with AES
+    const encryptedData = CryptoJS.AES.encrypt(jsonData, aesKey).toString();
+    
+    // Use forge to encrypt the AES key with RSA-OAEP padding
+    // First, convert the PEM format public key to forge's format
+    const publicKeyForge = forge.pki.publicKeyFromPem(publicKey);
+    
+    // Encrypt the AES key with OAEP padding matching the backend's pkcs1_oaep scheme
+    // Using SHA-1 as the hash function which is the default for pkcs1_oaep
+    const encryptedAesKey = forge.util.encode64(
+      publicKeyForge.encrypt(aesKey, 'RSA-OAEP', {
+        md: forge.md.sha1.create(),
+        mgf1: {
+          md: forge.md.sha1.create()
+        }
+      })
+    );
+    
+    // Return in the format expected by the backend
+    return {
+      encryptedAesKey,
+      sessionId,
+      encryptedData
+    };
+  } catch (_error) {
+    // Log to error tracking service in production instead of console
+    throw new Error('Failed to encrypt data securely');
   }
 }; 

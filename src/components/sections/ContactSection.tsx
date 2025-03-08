@@ -2,7 +2,8 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useState } from "react";
-import { submitVisitorRequest, VisitorSubmission } from "@/lib/api";
+import { submitVisitorRequest } from "@/api";
+import { VisitorSubmission } from "@/types/api";
 import { showSuccessToast, showErrorToast } from "@/utils/toast";
 
 /**
@@ -87,19 +88,17 @@ export const ContactSection = () => {
         fullName: formData.fullName,
         email: formData.email,
         phoneNumber: formattedPhone,
-        subject: formData.subject || "Contact Form Submission",
+        subject: formData.subject || "General Inquiry",
         description: formData.description
       };
       
-      console.log("Submitting data from updates page:", submissionData);
-      
       // Submit the data to the API
-      const response = await submitVisitorRequest(submissionData);
-      console.log("API response from updates page:", response);
+      const _response = await submitVisitorRequest(submissionData);
       
       // Update status and show success message
       setStatus("success");
-      showSuccessToast("Your message has been sent successfully! We&apos;ll get back to you soon.");
+      setErrorMessage(null);
+      showSuccessToast("Your message has been sent successfully! We'll get back to you soon.");
       
       // Reset form
       setFormData({
@@ -116,7 +115,8 @@ export const ContactSection = () => {
       const message = error.message || "Failed to send your message. Please try again later.";
       setErrorMessage(message);
       showErrorToast(message);
-      console.error("Contact form submission error:", error);
+      // Log to error tracking service in production instead of console
+      // console.error("Contact form submission error:", error);
     } finally {
       // Reset status after delay for success state
       if (status === "success") {
@@ -148,11 +148,11 @@ export const ContactSection = () => {
             {...fadeIn("up", 0.2)} 
             className="w-full lg:w-[60%] px-4 sm:px-12 lg:px-24 py-16 lg:py-24 bg-white"
           >
-            <h2 className="text-4xl sm:text-5xl font-bold text-[#0A173B] mb-6 font-[&apos;PT_Serif&apos;]">
-              Ask Us Anything, Anytime.
+            <h2 className="text-4xl sm:text-5xl font-bold text-[#0A173B] mb-6 font-['PT_Serif']">
+              Get In Touch
             </h2>
-            <p className="text-lg text-gray-700 mb-8">
-              Have a question about our credit repair services? We&apos;re here to help! Fill out the form below and our team will get back to you as soon as possible.
+            <p className="text-gray-600 mb-8 max-w-2xl">
+              Have a question about our credit repair services? We're here to help! Fill out the form below and our team will get back to you as soon as possible.
             </p>
 
             {/* Display error message if any */}
@@ -164,8 +164,8 @@ export const ContactSection = () => {
             
             {/* Display success message */}
             {status === "success" && (
-              <div className="p-4 mb-6 bg-green-100 text-green-700 rounded-md">
-                Your message has been sent successfully! We&apos;ll get back to you soon.
+              <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6">
+                <p>Your message has been sent successfully! We'll get back to you soon.</p>
               </div>
             )}
 

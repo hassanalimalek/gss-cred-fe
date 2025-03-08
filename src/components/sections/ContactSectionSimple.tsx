@@ -1,7 +1,7 @@
 'use client';
 import { Mail, Phone } from 'lucide-react';
 import { useState } from 'react';
-import { submitVisitorRequest, VisitorSubmission } from '@/lib/api';
+import { submitVisitorRequest } from '@/api';
 import { showSuccessToast, showErrorToast } from '@/utils/toast';
 
 export const ContactSectionSimple = () => {
@@ -58,33 +58,29 @@ export const ContactSectionSimple = () => {
     setErrorMessage(null);
     
     try {
-      console.log("Raw phone number:", formData.phoneNumber);
-      
-      // Format phone number to ensure it has +1 prefix
-      const formattedPhone = formData.phoneNumber && formData.phoneNumber.length > 0 ? 
-        (formData.phoneNumber.length === 10 ? `+1${formData.phoneNumber}` : formData.phoneNumber) : 
-        '';
-      
-      console.log("Formatted phone number:", formattedPhone);
+      // Format the phone number to ensure it has the country code
+      const formattedPhone = `+1${formData.phoneNumber}`;
       
       // Prepare submission data
-      const submissionData: VisitorSubmission = {
+      const submissionData = {
         fullName: formData.fullName,
         email: formData.email,
         phoneNumber: formattedPhone,
-        subject: formData.subject || "Contact Form Submission",
-        description: formData.description
+        subject: formData.subject || "General Inquiry",
+        description: formData.description,
       };
       
-      console.log("Submitting data:", submissionData);
-      
-      // Submit the data to the API
-      const response = await submitVisitorRequest(submissionData);
-      console.log("API response:", response);
+      // For security, we should implement proper encryption like in OnboardingForm
+      // But for now, the contact form doesn't need the same level of security
+      // as it doesn't handle sensitive information like SSN or card details
+      const _response = await submitVisitorRequest(submissionData);
+      // Remove console.log before production
+      // console.log("API response:", response);
       
       // Update status and show success message
       setStatus("success");
-      showSuccessToast("Your message has been sent successfully! We&apos;ll get back to you soon.");
+      setErrorMessage(null);
+      showSuccessToast("Your message has been sent successfully! We'll get back to you soon.");
       
       // Reset form
       setFormData({
@@ -101,11 +97,12 @@ export const ContactSectionSimple = () => {
       const message = error.message || "Failed to send your message. Please try again later.";
       setErrorMessage(message);
       showErrorToast(message);
-      console.error("Contact form submission error:", error);
+      // Log to error tracking service in production instead of console
+      // console.error("Contact form submission error:", error);
     } finally {
       // Reset status after delay
       setTimeout(() => {
-        if (status === "loading" || status === "success") {
+        if (status !== "idle" && status !== "error") {
           setStatus("idle");
         }
       }, 3000);
@@ -115,6 +112,10 @@ export const ContactSectionSimple = () => {
   return (
     <section className="bg-[#F9F9FB] py-16 sm:py-24">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-gray-900">Contact Us</h2>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
           {/* Left Column */}
           <div>
@@ -122,11 +123,11 @@ export const ContactSectionSimple = () => {
               Ask Us Anything, Anytime.
             </h2>
 
-            <p className="text-gray-600 text-lg leading-relaxed mb-8">
-              Have a question or need support? Don&apos;t hesitate to reach out! Whether
-              it&apos;s about our services, your credit journey, or any concerns you may have,
-              we&apos;re always ready to assist you. Feel free to contact us anytime, and our
-              team will be happy to provide the answers and support you need.
+            <p className="text-base text-gray-500 mb-8">
+              Have a question or need support? Don't hesitate to reach out! Whether
+              it's about our services, your credit journey, or any concerns you may have,
+              we're always ready to assist you. Feel free to contact us anytime, and our
+              team will get back to you as soon as possible.
             </p>
 
             {/* Contact Info */}
@@ -135,7 +136,7 @@ export const ContactSectionSimple = () => {
                 <Mail className="w-5 h-5 text-yellow-600" />
                 <div>
                   <h3 className="font-bold text-gray-700 mb-1">Email</h3>
-                  <p className="text-gray-600">credit@xignite.com</p>
+                  <p className="text-gray-600">cred@gznite.com</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
@@ -160,8 +161,10 @@ export const ContactSectionSimple = () => {
               
               {/* Display success message */}
               {status === "success" && (
-                <div className="p-3 bg-green-100 text-green-700 rounded">
-                  Your message has been sent successfully! We&apos;ll get back to you soon.
+                <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6">
+                  <p>
+                    Your message has been sent successfully! We'll get back to you soon.
+                  </p>
                 </div>
               )}
             
@@ -188,7 +191,7 @@ export const ContactSectionSimple = () => {
                       onChange={(e) => {
                         // Remove any non-digit characters and limit to 10 digits
                         const cleaned = e.target.value.replace(/[^\d]/g, '').substring(0, 10);
-                        console.log("Phone input changed:", cleaned);
+                        
                         handleChange({
                           ...e,
                           target: {

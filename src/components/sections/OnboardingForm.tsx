@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { PaymentInputsContainer } from "react-payment-inputs";
-import { usePaymentInputs } from "react-payment-inputs";
-import { submitCreditRepairRequest } from "../../lib/api";
-import { showSuccessToast, showErrorToast } from "@/utils/toast";
+import React, { useState, useEffect, useCallback } from "react";
+import { PaymentInputsContainer, usePaymentInputs } from "react-payment-inputs";
+import { submitCreditRepairRequest, getEncryptionKeys, uploadFiles } from "../../api";
+import { showSuccessToast, showErrorToast } from "../../utils/toast";
 import axios from 'axios';
+import { encryptFields, encryptFormData } from '../../utils/encryption';
+import { LoadingSpinner } from "../common/LoadingSpinner";
+import { useRouter } from "next/navigation";
+import { CardIcon } from "../common/CardIcon";
 
 // Extend Window interface to include Accept.js
 declare global {
@@ -34,7 +37,7 @@ interface CreditCardPreviewProps {
 
 // Credit Card component to display the card UI
 const CreditCardPreview: React.FC<CreditCardPreviewProps> = ({ cardNumber, expiryDate, cvc }) => {
-  // 0.5) Don't hide the card number, just format with spacing (no masking).
+  // Format the card number with spaces
   const formatDisplayCardNumber = () => {
     if (!cardNumber) return "•••• •••• •••• ••••";
     // Pad up to 16 for a consistent look, then space every 4 digits
@@ -47,6 +50,7 @@ const CreditCardPreview: React.FC<CreditCardPreviewProps> = ({ cardNumber, expir
 
   // Determine card type based on first digits
   const getCardType = () => {
+    if (!cardNumber) return "default";
     if (cardNumber.startsWith("4")) return "visa";
     if (cardNumber.startsWith("5")) return "mastercard";
     if (cardNumber.startsWith("3")) return "amex";
@@ -55,14 +59,29 @@ const CreditCardPreview: React.FC<CreditCardPreviewProps> = ({ cardNumber, expir
   };
 
   const cardType = getCardType();
+  
+  // Dynamic card background based on card type
+  const getCardBackground = () => {
+    switch (cardType) {
+      case "visa":
+        return "from-blue-600 to-blue-900";
+      case "mastercard":
+        return "from-red-600 to-yellow-600";
+      case "amex":
+        return "from-blue-400 to-blue-700";
+      case "discover":
+        return "from-orange-400 to-orange-700";
+      default:
+        return "from-gray-700 to-gray-900";
+    }
+  };
 
   return (
-    // 4) Changed dimensions so it appears more like a real credit card shape
-    <div className="relative w-[410px] h-[220px] rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 p-6 text-white shadow-lg overflow-hidden">
-      {/* 0.5) Move the card type (brand logo) to the TOP RIGHT */}
+    <div className={`relative w-full max-w-[410px] h-[220px] rounded-xl bg-gradient-to-tr ${getCardBackground()} p-6 text-white shadow-lg overflow-hidden transition-all duration-300`}>
+      {/* Card brand logo/icon */}
       <div className="absolute top-6 right-6">
         {cardType === "visa" && (
-          <span className="text-xl font-bold italic">VISA</span>
+          <span className="text-xl font-bold italic tracking-wider">VISA</span>
         )}
         {cardType === "mastercard" && (
           <div className="flex">
@@ -70,40 +89,52 @@ const CreditCardPreview: React.FC<CreditCardPreviewProps> = ({ cardNumber, expir
             <div className="w-8 h-8 bg-yellow-500 rounded-full opacity-80"></div>
           </div>
         )}
-        {cardType === "amex" && <span className="text-xl font-bold">AMEX</span>}
+        {cardType === "amex" && (
+          <span className="text-xl font-bold tracking-wide">AMEX</span>
+        )}
         {cardType === "discover" && (
           <span className="text-xl font-bold">DISCOVER</span>
+        )}
+        {cardType === "default" && (
+          <span className="text-xl font-bold">CARD</span>
         )}
       </div>
 
       {/* Card chip */}
-      <div className="w-12 h-10 bg-yellow-300 rounded-md mb-6 flex items-center justify-center">
-        <div className="w-10 h-8 border-2 border-yellow-600 rounded-md"></div>
+      <div className="w-12 h-10 bg-yellow-300 rounded-md mb-6 flex items-center justify-center overflow-hidden">
+        <div className="w-10 h-8 border-2 border-yellow-600 rounded-md grid grid-cols-3 grid-rows-2 gap-px">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-yellow-600/30"></div>
+          ))}
+        </div>
       </div>
 
-      {/* Full card number (no middle digits hidden) */}
-      <div className="text-2xl mb-6 font-mono tracking-wider">
+      {/* Card number */}
+      <div className="text-xl md:text-2xl mb-6 font-mono tracking-wider">
         {formatDisplayCardNumber()}
       </div>
 
-      {/* 0.5) In place of card holder name, show expiry date; in place of expires, show CVV */}
+      {/* Card details */}
       <div className="flex justify-between items-center">
-        {/* Left side => Expires */}
+        {/* Expires */}
         <div>
           <div className="text-xs uppercase text-gray-200 mb-1">Expires</div>
           <div className="font-medium">{expiryDate || "MM/YY"}</div>
         </div>
-        {/* Right side => CVV */}
+        {/* CVV */}
         <div>
           <div className="text-xs uppercase text-gray-200 mb-1">CVV</div>
           <div className="font-medium">{cvc || "***"}</div>
         </div>
       </div>
 
-      {/* Subtle security pattern */}
-      <div className="absolute inset-0 bg-white opacity-5">
+      {/* Security pattern overlay */}
+      <div className="absolute inset-0 bg-white opacity-5 pointer-events-none">
         <div className="w-full h-full bg-grid-slate-200/10"></div>
       </div>
+      
+      {/* Chip reflection */}
+      <div className="absolute top-20 left-12 w-6 h-1 bg-white opacity-20 transform rotate-45"></div>
     </div>
   );
 };
@@ -120,33 +151,39 @@ interface FormData {
   driverLicense: FileList | null;
   address: string;
   dateOfBirth: string;
-  [key: string]: string | FileList | null;
+  requestRecordExpunction: boolean;
+  [key: string]: string | FileList | null | boolean;
 }
 
 interface UploadProgress {
   utilityBill: number;
   driverLicense: number;
+  [key: string]: number; // Allow dynamic field access
 }
 
 interface FormErrors {
   [key: string]: string;
 }
 
+// Simple inline spinner component
+const Spinner = () => (
+  <div className="inline-block animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mr-3" aria-hidden="true"></div>
+);
 
 const OnboardingForm = () => {
-  // Add client-side only state
-  const [isMounted, setIsMounted] = useState(false);
-  
-
+  // Remove client-side only state tracking
   
   const PUBLIC_CLIENT_KEY = process.env.NEXT_PUBLIC_AUTHORIZE_CLIENT_KEY || "";
   const API_LOGIN_ID = process.env.NEXT_PUBLIC_AUTHORIZE_LOGIN_ID || "";
-
+  // Remove console logs with sensitive info before production
+  // console.log("PUBLIC_CLIENT_KEY", PUBLIC_CLIENT_KEY);
+  // console.log("API_LOGIN_ID", API_LOGIN_ID);
 
   const packageOptions = [
     { value: "TIER_1", label: "Tier 1", price: 2199 },
     { value: "TIER_2", label: "Tier 2", price: 2499 },
     { value: "TIER_3", label: "Tier 3", price: 3499 },
+    {value:"CUSTOM", label:"Custom", price:1}
   ];
 
   const [formData, setFormData] = useState<FormData>({
@@ -160,6 +197,7 @@ const OnboardingForm = () => {
     driverLicense: null,
     address: "",
     dateOfBirth: "",
+    requestRecordExpunction: false,
   });
 
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -168,6 +206,10 @@ const OnboardingForm = () => {
   const [isAcceptReady, setIsAcceptReady] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({ utilityBill: 0, driverLicense: 0 });
   const [isUploading, setIsUploading] = useState(false);
+  const [fileUploads, setFileUploads] = useState<{[key: string]: {uploading: boolean, completed: boolean, error?: boolean}}>({
+    utilityBill: {uploading: false, completed: false},
+    driverLicense: {uploading: false, completed: false}
+  });
 
   // Payment card state
   const [cardNumber, setCardNumber] = useState("");
@@ -180,50 +222,66 @@ const OnboardingForm = () => {
 
   // Load Authorize.Net Accept.js
   useEffect(() => {
-    setIsMounted(true);
-    
-    const existingScript = document.getElementById('accept-js');
-    if (existingScript) existingScript.remove();
-
-    const script = document.createElement("script");
-    script.src = "https://jstest.authorize.net/v1/Accept.js";
-    script.id = 'accept-js';
-    script.async = true;
-    script.setAttribute('data-environment', 'sandbox');
-    
-    script.onload = () => {
-      setIsAcceptReady(true);
-      console.log('Accept.js loaded successfully');
-    };
-    script.onerror = () => {
-      console.error("Failed to load Accept.js");
-      setStatus('error');
-      setMessage('Failed to load payment processor');
-    };
-    document.body.appendChild(script);
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
+    const loadAcceptJs = async () => {
+      try {
+        // Use environment variables for Accept.js URLs
+        const acceptJsUrl = process.env.NODE_ENV === "production"
+          ? process.env.NEXT_PUBLIC_ACCEPTJS_PROD_URL
+          : process.env.NEXT_PUBLIC_ACCEPTJS_TEST_URL;
+          
+        if (!acceptJsUrl) {
+          // Log to error tracking service in production instead of console
+          setStatus("error");
+          setMessage("Payment system failed to initialize. Please contact support.");
+          return;
+        }
+        
+        const script = document.createElement("script");
+        script.src = acceptJsUrl;
+        script.async = true;
+        
+        script.onload = () => setIsAcceptReady(true);
+        script.onerror = () => {
+          // Log to error tracking service in production instead of console
+          setStatus("error");
+          setMessage("Payment system failed to initialize. Please try again later.");
+        };
+        
+        document.body.appendChild(script);
+      } catch (error) {
+        // Log to error tracking service in production instead of console
+        setStatus("error");
+        setMessage("Payment system failed to initialize. Please try again later.");
       }
+    };
+    
+    loadAcceptJs();
+    
+    // Cleanup function
+    return () => {
+      const scripts = document.querySelectorAll(`script[src*="Accept.js"]`);
+      scripts.forEach(script => script.remove());
     };
   }, []);
 
-  // If not mounted yet (server-side), return a loading state
-  if (!isMounted) {
-    return (
-      <section className="py-16 sm:py-24 lg:py-32 bg-white">
-        <div className="w-[95%] sm:w-[90%] mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl sm:text-5xl font-bold text-[#0A173B] mb-4 font-['PT_Serif']">
-            Contact Us
-          </h2>
-          <p className="text-lg text-gray-600 font-montserrat">
-            Loading contact form...
-          </p>
-        </div>
-      </section>
-    );
-  }
+  // Check for required environment variables
+  useEffect(() => {
+    const requiredEnvVars = [
+      { name: 'NEXT_PUBLIC_API_BASE_URL', value: process.env.NEXT_PUBLIC_API_BASE_URL },
+      { name: 'NEXT_PUBLIC_AUTHORIZE_LOGIN_ID', value: process.env.NEXT_PUBLIC_AUTHORIZE_LOGIN_ID },
+      { name: 'NEXT_PUBLIC_AUTHORIZE_CLIENT_KEY', value: process.env.NEXT_PUBLIC_AUTHORIZE_CLIENT_KEY },
+      { name: process.env.NODE_ENV === 'production' ? 'NEXT_PUBLIC_ACCEPTJS_PROD_URL' : 'NEXT_PUBLIC_ACCEPTJS_TEST_URL', 
+        value: process.env.NODE_ENV === 'production' ? process.env.NEXT_PUBLIC_ACCEPTJS_PROD_URL : process.env.NEXT_PUBLIC_ACCEPTJS_TEST_URL }
+    ];
+    
+    const missingVars = requiredEnvVars.filter(v => !v.value);
+    
+    if (missingVars.length > 0) {
+      setStatus("error");
+      setMessage(`Configuration error. Please contact support. [Missing: ${missingVars.map(v => v.name).join(', ')}]`);
+      // In production, we would log this to an error tracking service but not expose the details to the user
+    }
+  }, []);
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -245,29 +303,127 @@ const OnboardingForm = () => {
 
   const handleFileSelect = (fieldName: string) => (files: FileList | null) => {
     if (files && files.length > 0) {
+      const file = files[0];
+      const maxSizeInBytes = 10 * 1024 * 1024; // 10MB
+      
+      // Validate file size
+      if (file.size > maxSizeInBytes) {
+        setErrors(prev => ({
+          ...prev,
+          [fieldName]: `File size exceeds 10MB limit. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`
+        }));
+        return;
+      }
+      
+      // Validate file type
+      const validTypes = [
+        'application/pdf', 
+        'image/png', 
+        'image/jpeg', 
+        'image/jpg'
+      ];
+      
+      if (!validTypes.includes(file.type)) {
+        setErrors(prev => ({
+          ...prev,
+          [fieldName]: `Invalid file type. Please upload a PDF, PNG, JPG or JPEG file.`
+        }));
+        return;
+      }
+      
       setFormData((prev) => ({ ...prev, [fieldName]: files }));
-      // Clear the error for this field when a file is selected
+      
+      // Clear any errors for this field when a valid file is selected
       setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[fieldName];
         return newErrors;
       });
+      
+      // Reset progress tracking for this field
+      setUploadProgress(prev => ({
+        ...prev,
+        [fieldName]: 0
+      }));
+      setFileUploads(prev => ({
+        ...prev,
+        [fieldName]: {uploading: false, completed: false}
+      }));
     }
+  };
+
+  // Get API base URL from environment
+  const getApiBaseUrl = () => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (!baseUrl) {
+      // Log to error tracking service in production instead of console
+      setStatus("error");
+      setMessage("API configuration error. Please contact support.");
+      throw new Error("API base URL not defined");
+    }
+    return baseUrl;
   };
 
   // Validate
   const validateForm = (): FormErrors | null => {
     const newErrors: FormErrors = {};
-    const { name, email, package: pkg, address, dateOfBirth, utilityBill, driverLicense } = formData;
+    const { name, email, phone, ssn, package: pkg, address, dateOfBirth, utilityBill, driverLicense } = formData;
 
     if (!name) newErrors.name = "Name is required";
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = "Valid email is required";
     }
+    
+    // Phone validation - require 10 digits, allow for formatting
+    if (phone) {
+      // Remove all non-digit characters for validation
+      const digitsOnly = phone.replace(/\D/g, '');
+      if (digitsOnly.length !== 10) {
+        newErrors.phone = "Phone number must be 10 digits";
+      }
+    } else {
+      newErrors.phone = "Phone number is required";
+    }
+
+    // SSN validation - must be 9 digits (XXX-XX-XXXX or XXXXXXXXX format)
+    if (ssn) {
+      const digitsOnly = ssn.replace(/\D/g, '');
+      if (digitsOnly.length !== 9) {
+        newErrors.ssn = "SSN must be 9 digits (XXX-XX-XXXX format)";
+      }
+    } else {
+      newErrors.ssn = "Social Security Number is required";
+    }
+
+    // Date of Birth validation
+    if (dateOfBirth) {
+      const dobDate = new Date(dateOfBirth);
+      const today = new Date();
+      
+      // Check if date is valid
+      if (isNaN(dobDate.getTime())) {
+        newErrors.dateOfBirth = "Please enter a valid date";
+      } 
+      // Check if date is in the future
+      else if (dobDate > today) {
+        newErrors.dateOfBirth = "Date of birth cannot be in the future";
+      }
+      // Check if person is at least 18 years old
+      else {
+        const ageDifMs = today.getTime() - dobDate.getTime();
+        const ageDate = new Date(ageDifMs);
+        const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+        
+        if (age < 18) {
+          newErrors.dateOfBirth = "You must be at least 18 years old";
+        }
+      }
+    } else {
+      newErrors.dateOfBirth = "Date of Birth is required";
+    }
 
     if (!pkg) newErrors.package = "Please select a package";
     if (!address) newErrors.address = "Address is required";
-    if (!dateOfBirth) newErrors.dateOfBirth = "Date of Birth is required";
     
     // Updated file validation logic
     if (!utilityBill || utilityBill.length === 0) {
@@ -282,6 +438,7 @@ const OnboardingForm = () => {
     if (!cardNumber || meta.error) {
       newErrors.cardNumber = "Valid card number is required";
     }
+  
     if (!cvc || !/^\d{3,4}$/.test(cvc)) {
       newErrors.cvc = "Valid CVC required";
     }
@@ -292,157 +449,369 @@ const OnboardingForm = () => {
     return Object.keys(newErrors).length > 0 ? newErrors : null;
   };
 
-  // Submit => Tokenize => Send to backend
+  // Function to reset the form after successful submission
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      ssn: "",
+      referralCode: "",
+      package: "",
+      utilityBill: null,
+      driverLicense: null,
+      address: "",
+      dateOfBirth: "",
+      requestRecordExpunction: false,
+    });
+    setCardNumber("");
+    setExpiryDate("");
+    setCvc("");
+    setErrors({});
+    setIsUploading(false);
+    setUploadProgress({ utilityBill: 0, driverLicense: 0 });
+    setFileUploads({
+      utilityBill: {uploading: false, completed: false},
+      driverLicense: {uploading: false, completed: false}
+    });
+  };
+
+  // Modified handleSubmit for better error handling
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!isAcceptReady || status === "loading") return;
 
     try {
-      const validationErrors = validateForm();
-      if (!validationErrors) {
-        setErrors({});
-        setMessage("Processing your request...");
-        setStatus("loading");
+      // Step 2: Set loading state
+      setStatus("loading");
+      setMessage("Processing your application...");
 
-        const [month, year] = expiryDate.split("/");
-        if (!month || !year) {
-          throw new Error("Invalid expiry date format.");
+      try {
+        // Step 3: Validate form one more time
+        const formErrors = validateForm();
+        if (formErrors) {
+          setErrors(formErrors);
+          const firstErrorField = Object.keys(formErrors)[0];
+          const errorElement = document.getElementById(firstErrorField);
+          if (errorElement) {
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            errorElement.focus();
+          }
+          setStatus("error");
+          setMessage("Please correct the errors in the form.");
+          showErrorToast("Please correct the errors in the form.");
+          return;
+        }
+        
+        // Clear any previous errors since validation passed
+        setErrors({});
+
+        // Step 4: Verify API configuration
+        const apiBaseUrl = getApiBaseUrl();
+        if (!apiBaseUrl) {
+          setStatus("error");
+          setMessage("System configuration error. Please try again later or contact support.");
+          return;
         }
 
-        const secureData = {
-          authData: {
-            clientKey: PUBLIC_CLIENT_KEY,
-            apiLoginID: API_LOGIN_ID,
-          },
-          cardData: {
-            cardNumber: cardNumber.replace(/\s/g, ""),
-            month: month.trim(),
-            year: `20${year.trim()}`,
-            cardCode: cvc,
-          },
-        };
-
-        // Get payment token
-        const acceptResponse: any = await new Promise((resolve, reject) => {
-          if (!window.Accept?.dispatchData) {
-            throw new Error("Accept.js is not ready");
-          }
-          window.Accept.dispatchData(secureData, (response: any) => {
-            if (response.messages.resultCode === "Error") {
-              reject(new Error(response.messages.message[0].text));
-            } else {
-              resolve(response);
+        // Step 5: Verify document uploads
+        const utilityBillFile = formData.utilityBill && formData.utilityBill.item(0);
+        const driverLicenseFile = formData.driverLicense && formData.driverLicense.item(0);
+        
+        if (!utilityBillFile || !driverLicenseFile) {
+          setStatus("error");
+          setMessage("Required documents are missing. Please upload both utility bill and driver's license.");
+          showErrorToast("Required documents are missing. Please upload both utility bill and driver's license.");
+          return;
+        }
+        
+        // Step 6: Prepare and validate data for submission
+        // Clean phone number
+        const cleanedPhone = formData.phone.replace(/\D/g, '');
+        if (cleanedPhone.length !== 10) {
+          setStatus("error");
+          setMessage("Phone number must be 10 digits.");
+          showErrorToast("Phone number must be 10 digits.");
+          setErrors(prev => ({...prev, phone: "Phone number must be 10 digits"}));
+          return;
+        }
+        
+        const formattedPhone = `+1${cleanedPhone}`;
+        
+        // Clean SSN
+        const ssnDigits = formData.ssn.replace(/\D/g, '');
+        if (ssnDigits.length !== 9) {
+          setStatus("error");
+          setMessage("SSN must be 9 digits.");
+          showErrorToast("SSN must be 9 digits.");
+          setErrors(prev => ({...prev, ssn: "SSN must be 9 digits"}));
+          return;
+        }
+        
+        // Validate payment inputs are ready
+        if (!isAcceptReady) {
+          setMessage("Payment processing system is not ready. Please try again.");
+          setStatus("error");
+          showErrorToast("Payment processing system is not ready. Please try again.");
+          return;
+        }
+        
+        if (meta.error) {
+          setMessage(`Payment card error: ${meta.error}`);
+          setStatus("error");
+          showErrorToast(`Payment card error: ${meta.error}`);
+          return;
+        }
+        
+        // Step 7: Upload files first
+        try {
+          // Start upload process
+          setMessage("Uploading documents... Please do not close this window.");
+          setIsUploading(true);
+          setUploadProgress({ utilityBill: 0, driverLicense: 0 });
+          
+          const fileApiWithProgress = axios.create({
+            baseURL: apiBaseUrl,
+            timeout: 120000, // Increased timeout to 2 minutes for larger files
+            headers: {
+              'Content-Type': 'multipart/form-data'
             }
           });
-        });
-
-        // Validate package selection
-        const selectedPackage = packageOptions.find(pkg => pkg.value === formData.package);
-        if (!selectedPackage) {
-          throw new Error("Invalid package selected");
-        }
-
-        // Validate and prepare files
-        const utilityBillFile = formData.utilityBill?.item(0);
-        const driverLicenseFile = formData.driverLicense?.item(0);
-        if (!utilityBillFile || !driverLicenseFile) {
-          throw new Error("Required documents are missing");
-        }
-
-        // Handle file uploads
-        setIsUploading(true);
-        setUploadProgress({ utilityBill: 0, driverLicense: 0 });
-
-        const fileApiWithProgress = axios.create({
-          baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://lzx4063g-3003.inc1.devtunnels.ms',
-        });
-
-        const uploadFormData = new FormData();
-        uploadFormData.append('files', utilityBillFile);
-        uploadFormData.append('files', driverLicenseFile);
-        uploadFormData.append('isPublic', 'false');
-
-        const uploadResponse = await fileApiWithProgress.post('/media', uploadFormData, {
-          onUploadProgress: (progressEvent) => {
-            if (progressEvent.total) {
-              const totalSize = utilityBillFile.size + driverLicenseFile.size;
-              const loadedSize = progressEvent.loaded;
-              
-              // Calculate individual progress based on file sizes
-              const utilityBillProgress = Math.round((loadedSize * utilityBillFile.size / totalSize) / utilityBillFile.size * 100);
-              const driverLicenseProgress = Math.round((loadedSize * driverLicenseFile.size / totalSize) / driverLicenseFile.size * 100);
-              
-              setUploadProgress({
-                utilityBill: Math.min(utilityBillProgress, 100),
-                driverLicense: Math.min(driverLicenseProgress, 100)
+          
+          // Function to upload a single file with progress tracking
+          const uploadSingleFile = async (file: File, fieldName: string) => {
+            const singleFileFormData = new FormData();
+            singleFileFormData.append('files', file);
+            singleFileFormData.append('isPublic', 'false');
+            
+            setFileUploads(prev => ({
+              ...prev,
+              [fieldName]: {uploading: true, completed: false}
+            }));
+            
+            try {
+              const response = await fileApiWithProgress.post('/media', singleFileFormData, {
+                onUploadProgress: (progressEvent) => {
+                  const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+                  setUploadProgress(prev => ({
+                    ...prev,
+                    [fieldName]: percentCompleted
+                  }));
+                },
+                headers: {
+                  'Content-Type': 'multipart/form-data'
+                }
               });
+              
+              setFileUploads(prev => ({
+                ...prev,
+                [fieldName]: {uploading: false, completed: true}
+              }));
+              
+              return response.data;
+            } catch (uploadError: any) {
+              setFileUploads(prev => ({
+                ...prev,
+                [fieldName]: {uploading: false, completed: false, error: true}
+              }));
+              
+              // Provide specific error messages based on error type
+              if (axios.isAxiosError(uploadError)) {
+                if (uploadError.code === 'ECONNABORTED') {
+                  throw new Error(`${fieldName} upload timed out. Please try again with a smaller file or better connection.`);
+                }
+                if (uploadError.response?.status === 413) {
+                  throw new Error(`${fieldName} is too large. Please upload a smaller file (max 10MB).`);
+                }
+              }
+              
+              throw new Error(`Failed to upload ${fieldName}. ${uploadError.message || 'Please try again.'}`);
             }
+          };
+          
+          // Upload both files concurrently
+          setMessage("Uploading documents... Please wait.");
+          const [utilityBillResponse, driverLicenseResponse] = await Promise.all([
+            uploadSingleFile(utilityBillFile, 'utilityBill'),
+            uploadSingleFile(driverLicenseFile, 'driverLicense')
+          ]).catch(error => {
+            // Centralized error handling for upload failures
+            setIsUploading(false);
+            throw error;
+          });
+          
+          // Validate upload results
+          if (!utilityBillResponse.files || utilityBillResponse.files.length === 0) {
+            throw new Error("Failed to upload utility bill. Please try again.");
           }
-        });
-
-        if (!uploadResponse.data.files || uploadResponse.data.files.length !== 2) {
-          throw new Error("Failed to upload all required documents");
+          
+          if (!driverLicenseResponse.files || driverLicenseResponse.files.length === 0) {
+            throw new Error("Failed to upload driver's license. Please try again.");
+          }
+          
+          // Documents uploaded successfully, proceed with payment
+          const utilityBillUrl = utilityBillResponse.files[0]._id;
+          const driverLicenseUrl = driverLicenseResponse.files[0]._id;
+          
+          // Step 8: Process payment now that documents are uploaded
+          setMessage("Processing payment... Please do not close this window.");
+          
+          let dataValue = "";
+          let dataDescriptor = "";
+          
+          try {
+            // Original payment processing
+            const secureData = {
+              authData: {
+                clientKey: PUBLIC_CLIENT_KEY,
+                apiLoginID: API_LOGIN_ID,
+              },
+              cardData: {
+                cardNumber: cardNumber.replace(/\s/g, ""),
+                month: expiryDate.split("/")[0].trim(),
+                year: `20${expiryDate.split("/")[1].trim()}`,
+                cardCode: cvc,
+              },
+            };
+            
+            // Get payment token
+            const acceptResponse: any = await new Promise((resolve, reject) => {
+              if (!window.Accept?.dispatchData) {
+                throw new Error("Accept.js is not ready");
+              }
+              window.Accept.dispatchData(secureData, (response: any) => {
+                if (response.messages.resultCode === "Error") {
+                  reject(new Error(response.messages.message[0].text));
+                } else {
+                  resolve(response);
+                }
+              });
+            });
+            
+            dataValue = acceptResponse.opaqueData.dataValue;
+            dataDescriptor = acceptResponse.opaqueData.dataDescriptor;
+            
+            if (!dataValue || !dataDescriptor) {
+              throw new Error("Payment processing failed. Please check your card information.");
+            }
+            
+            // Step 9: Submit credit repair request after successful payment and uploads
+            setMessage("Finalizing your application...");
+            
+            // Get encryption keys from server for secure transmission
+            const { publicKey, sessionId } = await getEncryptionKeys();
+            
+            // Prepare data for submission
+            const submissionData = {
+              fullName: formData.name,
+              email: formData.email,
+              phoneNumber: formattedPhone,
+              referralCode: formData.referralCode || undefined,
+              address: formData.address,
+              socialSecurityNumber: ssnDigits, // Use cleaned SSN without dashes
+              dateofBirth: formData.dateOfBirth,
+              utilityBill: utilityBillUrl,
+              driverLicense: driverLicenseUrl,
+              packageType: formData.package,
+              packagePrice: packageOptions.find((p) => p.value === formData.package)?.price || 0,
+              dataValue: dataValue,
+              dataDescriptor: dataDescriptor,
+              requestRecordExpunction: formData.requestRecordExpunction
+            };
+            
+            // Clear any lingering error messages before final submission
+            setErrors({});
+            
+            // Encrypt the entire form data object according to backend requirements
+            try {
+              const encryptedPayload = encryptFormData(submissionData, publicKey, sessionId);
+              
+              // Submit the encrypted payload
+              const submissionResponse = await submitCreditRepairRequest(encryptedPayload);
+              
+              // Step 10: Success handling
+              setStatus("success");
+              setMessage("Application submitted successfully! We'll get back to you soon.");
+              showSuccessToast("Your credit repair application has been submitted successfully! We'll be in touch soon.");
+              
+              // Clear the form after a short delay to allow the user to see the success message
+              setTimeout(() => {
+                resetForm();
+              }, 3000);
+            } catch (error) {
+              // Handle submission errors
+              let errorMessage = "An error occurred during submission.";
+              
+              if (error instanceof Error) {
+                // If it contains "cancelled" in the message, it might be a false negative
+                if (error.message.toLowerCase().includes('cancel')) {
+                  // Still show a notification but make it informative rather than an error
+                  setMessage("Your application is being processed. If you don't receive confirmation within 15 minutes, please contact support.");
+                  showSuccessToast("Your application is being processed. You'll receive a confirmation email shortly.");
+                  
+                  // Reset the form after a delay as the submission likely went through
+                  setTimeout(() => {
+                    resetForm();
+                  }, 3000);
+                  return;
+                }
+                
+                errorMessage = error.message;
+              }
+              
+              // For actual errors (not cancellations)
+              setStatus("error");
+              setMessage(errorMessage);
+              showErrorToast(errorMessage);
+              // Log to error tracking service in production instead of console
+            }
+          } catch (error) {
+            // Payment processing error
+            const errorMessage = error instanceof Error
+              ? `Payment error: ${error.message}`
+              : "Payment processing failed. Please try again.";
+            console.error("Payment processing error:", error);
+            if (error instanceof Error) {
+              console.error(`Error name: ${error.name}, message: ${error.message}`);
+              console.error(`Error stack: ${error.stack}`);
+            }
+            setMessage(errorMessage);
+            setStatus("error");
+            showErrorToast(errorMessage);
+            // Log to error tracking service in production instead of console
+          } finally {
+            setIsUploading(false);
+          }
+        } catch (error) {
+          // Document upload error handling
+          console.error("Document upload error:", error);
+          if (error instanceof Error) {
+            console.error(`Error name: ${error.name}, message: ${error.message}`);
+            console.error(`Error stack: ${error.stack}`);
+            setMessage(`Document upload error: ${error.message}`);
+          } else {
+            const errorMessage = "An unexpected error occurred during document upload. Please try again later.";
+            console.error("Unknown document upload error:", error);
+            setMessage(errorMessage);
+          }
+          
+          setStatus("error");
+          showErrorToast("Failed to upload documents. Please try again.");
         }
-
-        const utilityBillUrl = uploadResponse.data.files[0]._id;
-        const driverLicenseUrl = uploadResponse.data.files[1]._id;
-
-        // Submit credit repair request
-        const creditRepairData = {
-          fullName: formData.name,
-          email: formData.email,
-          phoneNumber: '+18143512239',
-          referralCode: formData.referralCode || undefined,
-          address: formData.address,
-          socialSecurityNumber: formData.ssn,
-          dateofBirth: formData.dateOfBirth,
-          utilityBill: utilityBillUrl,
-          driverLicense: driverLicenseUrl,
-          packageType: formData.package,
-          packagePrice: selectedPackage.price,
-          dataValue: acceptResponse.opaqueData.dataValue,
-          dataDescriptor: acceptResponse.opaqueData.dataDescriptor
-        };
-
-        await submitCreditRepairRequest(creditRepairData);
-
-        // Success handling
-        setStatus("success");
-        setMessage("Your credit repair request has been submitted successfully!");
-        showSuccessToast("Your credit repair request has been submitted successfully. You will be contacted by us shortly.");
-
-        // Reset form
-        setFormData({
-          name: "",
-          email: "",
-          phone: "",
-          ssn: "",
-          referralCode: "",
-          package: "",
-          utilityBill: null,
-          driverLicense: null,
-          address: "",
-          dateOfBirth: "",
-        });
-        setCardNumber("");
-        setExpiryDate("");
-        setCvc("");
-        setIsUploading(false);
-
-      } else {
-        setErrors(validationErrors);
+      } catch (error) {
+        // Log to error tracking service in production instead of console
+        const errorMessage = "An unexpected error occurred. Please try again later.";
+        console.error(error);
         setStatus("error");
-        setMessage("Please correct the errors.");
-        showErrorToast("Please correct the errors.");
+        setMessage(errorMessage);
+        showErrorToast(errorMessage);
       }
-    } catch (err: any) {
+    } catch (error) {
+      // Log to error tracking service in production instead of console
+      const errorMessage = "An unexpected error occurred. Please try again later.";
+      console.error(error);
       setStatus("error");
-      const errorMessage = err.message || "Failed to process your request";
       setMessage(errorMessage);
       showErrorToast(errorMessage);
-      setIsUploading(false);
-    } finally {
-      setTimeout(() => setStatus("idle"), 5000);
     }
   };
 
@@ -454,7 +823,8 @@ const OnboardingForm = () => {
     const isFileSelected = fileData && fileData.length > 0;
     const inputId = fieldName + "Input";
     const progress = uploadProgress[fieldName as keyof UploadProgress];
-    const showProgress = isUploading && isFileSelected && progress < 100;
+    const fileUploadState = fileUploads[fieldName];
+    const showProgress = isUploading && isFileSelected && (fileUploadState?.uploading || (progress > 0 && progress < 100));
     const error = errors[fieldName];
 
     return (
@@ -528,6 +898,15 @@ const OnboardingForm = () => {
                     ...prev,
                     [fieldName]: null
                   }));
+                  // Reset progress when removing file
+                  setUploadProgress(prev => ({
+                    ...prev,
+                    [fieldName]: 0
+                  }));
+                  setFileUploads(prev => ({
+                    ...prev,
+                    [fieldName]: {uploading: false, completed: false}
+                  }));
                 }}
                 className="text-red-500 hover:text-red-700"
               >
@@ -535,11 +914,25 @@ const OnboardingForm = () => {
               </button>
             </div>
             {showProgress && (
-              <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5">
-                <div
-                  className="bg-blue-600 h-2.5 rounded-full"
-                  style={{ width: `${progress}%` }}
-                ></div>
+              <div className="mt-2">
+                <div className="flex justify-between mb-1">
+                  <span className="text-xs font-medium text-blue-700">Uploading...</span>
+                  <span className="text-xs font-medium text-blue-700">{progress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+            {fileUploadState?.completed && (
+              <div className="mt-2 flex items-center text-green-600">
+                <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+                </svg>
+                <span className="text-xs">Upload complete</span>
               </div>
             )}
             {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
@@ -566,9 +959,6 @@ const OnboardingForm = () => {
           </p>
         </div>
 
-       
-
-     
 
         <form
           onSubmit={handleSubmit}
@@ -622,7 +1012,7 @@ const OnboardingForm = () => {
                 required
               />
             </div>
-            <p className="mt-1 text-xs text-gray-500">Format: +18143512239 (10 digits only)</p>
+            <p className="mt-1 text-xs text-gray-500">Format: +1 followed by 10 digits</p>
           </div>
 
           {/* Second Row: Full-width Email */}
@@ -787,6 +1177,24 @@ const OnboardingForm = () => {
             />
           </div>
 
+          {/* Record Expunction Checkbox */}
+          <div className="md:col-span-2 mb-4">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.requestRecordExpunction}
+                onChange={(e) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    requestRecordExpunction: e.target.checked
+                  }));
+                }}
+                className="form-checkbox h-5 w-5 text-[#D09C01] rounded border-gray-300 focus:ring-[#D09C01]"
+              />
+              <span className="text-neutral-800 font-bold">Request Record Expunctions</span>
+            </label>
+          </div>
+
           {/* Terms and Submit Button */}
           <div className="md:col-span-2 text-sm text-neutral-600">
             <p>
@@ -796,7 +1204,12 @@ const OnboardingForm = () => {
             </p>
             <p className="mt-2">
               Read the{" "}
-              <a href="#" className="text-[#D09C01] hover:underline">
+              <a 
+                href="/Customer-Disclosure.pdf" 
+                className="text-[#D09C01] hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Disclosure Here
               </a>
               .
@@ -841,7 +1254,11 @@ const OnboardingForm = () => {
                 rounded hover:bg-[#B88A01] transition-colors duration-200
                 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {status === "loading" ? "Processing..." : "Fix My Credits Now"}
+              {status === "loading" ? (
+                <span className="flex items-center justify-center">
+                  <Spinner /> Processing
+                </span>
+              ) : "Fix My Credits Now"}
             </button>
           </div>
         </form>
