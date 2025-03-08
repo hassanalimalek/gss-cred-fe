@@ -15,7 +15,7 @@ import { VisitorSubmission } from '../types/api';
  */
 export const submitVisitorRequest = async (data: VisitorSubmission): Promise<any> => {
   try {
-    const response = await api.post('/visitor-submissions', data);
+    const response = await api.post('/credit-repair-requests/visitor-submission', data);
     return response.data;
   } catch (error: any) {
     return handleApiError(error, 'Failed to submit contact request');
