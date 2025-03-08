@@ -19,11 +19,11 @@ export const UnlockPotential = () => {
             >
               Unlock Your <br className="hidden sm:block" /> Financial Potential
             </h2>
-            <p className="text-lg sm:text-xl text-gray-700 leading-relaxed font-montserrat text-center lg:text-left mb-8">
-              Are you ready to take control of your financial future? At Mulligan Credit Repair, 
-              we understand that life happens. Whether it&apos;s unexpected medical bills, job loss, 
-              or any unforeseen circumstance, your credit score can take a hit. 
-              But don&apos;t worry &ndash; a better financial future is within your reach.
+            <p className="text-lg text-gray-600 mb-8">
+              Having a low credit score can be frustrating, but 
+              we understand that life happens. Whether it's unexpected medical bills, job loss,
+              or other financial hardships, bad credit can happen to good people.
+              But don't worry – a better financial future is within your reach.
             </p>
             <div className="text-center lg:text-left">
               <a 

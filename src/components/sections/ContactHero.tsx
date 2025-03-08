@@ -1,6 +1,7 @@
 'use client';
 import { CircleArrowRight } from 'lucide-react';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 
 export const ContactHero = () => {
   return (
@@ -24,11 +25,15 @@ export const ContactHero = () => {
             </h1>
 
             {/* Paragraph */}
-            <p className="mt-6 text-gray-700 text-base sm:text-lg leading-relaxed pl-4">
-              We&apos;re here to help you take the next step toward achieving and 
-              maintaining a healthy credit score. Reach out to us today and let us guide 
-              you on your journey to financial success.
-            </p>
+            <motion.p 
+              className="text-white/90 mb-8 text-lg"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              We're here to help you take the next step toward achieving and
+              maintaining excellent credit. Our friendly team is ready to answer your questions.
+            </motion.p>
 
             {/* Smaller Image at the bottom-left */}
             <div className="mt-8 pl-4 relative h-[300px] max-w-sm">

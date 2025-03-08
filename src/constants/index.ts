@@ -16,11 +16,7 @@ export const NAVIGATION = footerLinks.navigation.map(link => ({
   active: link.href === "/"
 }));
 
-export const SOCIAL_LINKS = footerLinks.social.map(link => ({
-  icon: `/icons/${link.text.toLowerCase()}.svg`,
-  href: link.href,
-  label: link.text
-}));
+export const SOCIAL_LINKS = [];
 
 export const FEATURES = featureCards.map(card => ({
   image: card.imagePath,

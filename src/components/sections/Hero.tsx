@@ -24,7 +24,7 @@ export const Hero = () => {
   return (
     <section 
       id="home"
-      className="flex flex-col items-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16"
+      className=" bg-white flex flex-col items-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16"
       aria-labelledby="hero-heading"
     >
       <h1 

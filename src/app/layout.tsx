@@ -32,18 +32,19 @@ export default function RootLayout({
   useHashNavigation();
 
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${ptSerif.variable} antialiased`}
-      >
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${ptSerif.variable}`}
+    >
+      <body>
         <ErrorBoundary>
-          <div className="flex flex-col bg-white min-h-screen">
-            <Header phone='1-214-444-9837' email='cred@gznite.com'/>
+          <Header phone='1-214-444-9837' email='cred@gznite.com'/>
+          <main className="flex-grow">
             {children}
-            <Footer />
-          </div>
+          </main>
+          <Footer />
+          <Toaster />
         </ErrorBoundary>
-        <Toaster position="bottom-right" />
       </body>
     </html>
   );

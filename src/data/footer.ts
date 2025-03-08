@@ -14,7 +14,7 @@ export const footerLinks = {
   contact: [
     { text: "1-214-444-9837", href: "tel:12144449837" },
     { text: "Cred@Gznite.Com", href: "mailto:Cred@Gznite.Com" },
-    { text: "Disclosure Document", href: "/disclosure" },
+    { text: "Disclosure Document", href: "/Customer-Disclosure.pdf" },
   ],
   navigation: [
     { text: "Home", href: "/" },
@@ -22,9 +22,5 @@ export const footerLinks = {
     { text: "Contact Us", href: "/contact" },
     { text: "Testimonials", href: "/testimonials" },
   ],
-  social: [
-    { text: "Facebook", href: "https://facebook.com" },
-    { text: "Twitter", href: "https://twitter.com" },
-    { text: "Instagram", href: "https://instagram.com" },
-  ],
+  social: [],
 };

@@ -92,23 +92,14 @@ export const ProcessSteps = () => {
       id="process-steps" 
       className="py-20 sm:py-28 bg-gray-50"
     >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-16"
-        >
-          <span className="text-yellow-600 font-medium mb-2 block">STEP BY STEP</span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#0A142F] mb-6 font-['PT_Serif']">
-            Our Credit Repair Process
-          </h2>
-          <p className="text-lg text-gray-700 max-w-3xl mx-auto">
-            We&apos;ve simplified the credit repair process to make it easy for you to understand and follow. 
-            Here&apos;s how we&apos;ll work together to improve your credit score.
+      <div className="container mx-auto px-6 md:px-8 lg:px-12 py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-gray-800 mb-6">Our Simple 4-Step Process</h2>
+          <p className="text-lg text-gray-600 mx-auto max-w-3xl">
+            We've simplified the credit repair process to make it easy for you to understand and follow.
+            Here's how we'll work together to improve your credit score.
           </p>
-        </motion.div>
+        </div>
 
         <div className="mt-16">
           {steps.map((step) => (
