@@ -16,11 +16,6 @@ export const testimonials: Testimonial[] = [
     text: "Eliminated erroneous collections from his credit report, saving him over $10,000 in potential payments."
   },
   {
-    image: "https://randomuser.me/api/portraits/women/33.jpg",
-    name: "Sarah Johnson",
-    text: "After struggling with debt for years, I saw my credit score jump 150 points in just 3 months with Mulligan's help. Now I'm pre-approved for my first home!"
-  },
-  {
     image: "https://randomuser.me/api/portraits/men/45.jpg",
     name: "Robert Martinez",
     text: "They removed 7 incorrect late payments from my report that had been dragging my score down for years. My auto loan rate dropped by 4% when I refinanced!"
