@@ -224,29 +224,29 @@ const OnboardingForm = () => {
   useEffect(() => {
     const loadAcceptJs = async () => {
       try {
-        // Use environment variables for Accept.js URLs
-        const acceptJsUrl = process.env.NODE_ENV === "production"
-          ? process.env.NEXT_PUBLIC_ACCEPTJS_PROD_URL
-          : process.env.NEXT_PUBLIC_ACCEPTJS_TEST_URL;
-          
+        // Use a single URL provided via environment variable
+        const acceptJsUrl = process.env.NEXT_PUBLIC_ACCEPTJS_URL;
+
         if (!acceptJsUrl) {
           // Log to error tracking service in production instead of console
           setStatus("error");
           setMessage("Payment system failed to initialize. Please contact support.");
-          return;
+          throw new Error("Accept.js URL not defined");
         }
-        
+
         const script = document.createElement("script");
         script.src = acceptJsUrl;
         script.async = true;
-        
-        script.onload = () => setIsAcceptReady(true);
+        script.onload = () => {
+          // Accept.js loaded successfully
+          setIsAcceptReady(true);
+        };
         script.onerror = () => {
           // Log to error tracking service in production instead of console
           setStatus("error");
           setMessage("Payment system failed to initialize. Please try again later.");
         };
-        
+
         document.body.appendChild(script);
       } catch (error) {
         // Log to error tracking service in production instead of console
@@ -270,8 +270,7 @@ const OnboardingForm = () => {
       { name: 'NEXT_PUBLIC_API_BASE_URL', value: process.env.NEXT_PUBLIC_API_BASE_URL },
       { name: 'NEXT_PUBLIC_AUTHORIZE_LOGIN_ID', value: process.env.NEXT_PUBLIC_AUTHORIZE_LOGIN_ID },
       { name: 'NEXT_PUBLIC_AUTHORIZE_CLIENT_KEY', value: process.env.NEXT_PUBLIC_AUTHORIZE_CLIENT_KEY },
-      { name: process.env.NODE_ENV === 'production' ? 'NEXT_PUBLIC_ACCEPTJS_PROD_URL' : 'NEXT_PUBLIC_ACCEPTJS_TEST_URL', 
-        value: process.env.NODE_ENV === 'production' ? process.env.NEXT_PUBLIC_ACCEPTJS_PROD_URL : process.env.NEXT_PUBLIC_ACCEPTJS_TEST_URL }
+      { name: 'NEXT_PUBLIC_ACCEPTJS_URL', value: process.env.NEXT_PUBLIC_ACCEPTJS_URL }
     ];
     
     const missingVars = requiredEnvVars.filter(v => !v.value);
