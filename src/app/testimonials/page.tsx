@@ -16,7 +16,7 @@ export default function TestimonialsPage() {
             Client Success Stories
           </h1>
           <p className="text-lg sm:text-xl text-[#525A6D] max-w-3xl mx-auto">
-            Discover how we&apos;ve helped our clients improve their credit scores and achieve financial freedom.
+            Discover how we've helped our clients improve their credit scores and achieve financial freedom.
           </p>
         </div>
       </section>
@@ -36,9 +36,10 @@ export default function TestimonialsPage() {
                     <div className="w-16 h-16 rounded-full overflow-hidden mr-4 relative flex-shrink-0">
                       <Image
                         src={testimonial.image}
-                        alt={`${testimonial.name}&apos;s profile picture`}
-                        fill
-                        className="object-cover"
+                        alt={`${testimonial.name}'s profile picture`}
+                        width={80}
+                        height={80}
+                        className="rounded-full object-cover w-[80px] h-[80px]"
                       />
                     </div>
                     <h3 className="text-xl font-bold text-[#0A142F] font-['PT_Serif']">
