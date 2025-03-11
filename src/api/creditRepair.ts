@@ -28,6 +28,7 @@ export const submitCreditRepairRequest = async (
     // we return a successful response to handle race conditions
     return response.data;
   } catch (error: any) {
+    console.log("Error @@@", error);
     // If it's a network cancellation but the backend might still be processing
     if (axios.isCancel(error)) {
       // Return a provisional success message without logging

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { PaymentInputsContainer, usePaymentInputs } from "react-payment-inputs";
 import { submitCreditRepairRequest, getEncryptionKeys, uploadFiles } from "../../api";
 import { showSuccessToast, showErrorToast } from "../../utils/toast";
@@ -9,6 +9,28 @@ import { encryptFields, encryptFormData } from '../../utils/encryption';
 import { LoadingSpinner } from "../common/LoadingSpinner";
 import { useRouter } from "next/navigation";
 import { CardIcon } from "../common/CardIcon";
+
+// Environment-aware logging
+const isProduction = process.env.NODE_ENV === 'production';
+const logDebug = (message: string, data?: any) => {
+  if (!isProduction) {
+    if (data) {
+      console.log(message, data);
+    } else {
+      console.log(message);
+    }
+  }
+};
+
+const logError = (message: string, error?: any) => {
+  if (!isProduction) {
+    console.error(message, error);
+  }
+  // In production, you might want to send this to an error tracking service
+  // if (isProduction && typeof window !== 'undefined' && window.errorTracker) {
+  //   window.errorTracker.captureError(error, { message });
+  // }
+};
 
 // Extend Window interface to include Accept.js
 declare global {
@@ -165,6 +187,37 @@ interface FormErrors {
   [key: string]: string;
 }
 
+interface PaymentErrorDetails {
+  message: string;
+  responseCode?: string;
+  raw?: {
+    transactionResponse?: {
+      responseCode: string;
+      accountNumber?: string;
+      accountType?: string;
+      cvvResultCode?: string;
+      avsResultCode?: string;
+      errors?: Array<{
+        errorCode: string;
+        errorText: string;
+      }>;
+    };
+    messages?: {
+      resultCode: string;
+      message: Array<{
+        code: string;
+        text: string;
+      }>;
+    };
+  };
+}
+
+interface PaymentError {
+  statusCode: number;
+  error: string;
+  details: PaymentErrorDetails;
+}
+
 // Simple inline spinner component
 const Spinner = () => (
   <div className="inline-block animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mr-3" aria-hidden="true"></div>
@@ -180,8 +233,8 @@ const OnboardingForm = () => {
   // console.log("API_LOGIN_ID", API_LOGIN_ID);
 
   const packageOptions = [
-    { value: "TIER_1", label: "Tier 1", price: 1000.02 },
-    { value: "TIER_2", label: "Tier 2", price: 1000.02 },
+    { value: "TIER_1", label: "Tier 1", price: 2199 },
+    { value: "TIER_2", label: "Tier 2", price: 2499 },
     { value: "TIER_3", label: "Tier 3", price: 3499 },
     {value:"CUSTOM", label:"Custom", price:1}
   ];
@@ -365,87 +418,68 @@ const OnboardingForm = () => {
 
   // Validate
   const validateForm = (): FormErrors | null => {
-    const newErrors: FormErrors = {};
-    const { name, email, phone, ssn, package: pkg, address, dateOfBirth, utilityBill, driverLicense } = formData;
+    const errors: FormErrors = {};
 
-    if (!name) newErrors.name = "Name is required";
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Valid email is required";
-    }
-    
-    // Phone validation - require 10 digits, allow for formatting
-    if (phone) {
-      // Remove all non-digit characters for validation
-      const digitsOnly = phone.replace(/\D/g, '');
-      if (digitsOnly.length !== 10) {
-        newErrors.phone = "Phone number must be 10 digits";
-      }
-    } else {
-      newErrors.phone = "Phone number is required";
+    // Name validation
+    if (!formData.name.trim()) {
+      errors.name = "Full name is required";
     }
 
-    // SSN validation - must be 9 digits (XXX-XX-XXXX or XXXXXXXXX format)
-    if (ssn) {
-      const digitsOnly = ssn.replace(/\D/g, '');
-      if (digitsOnly.length !== 9) {
-        newErrors.ssn = "SSN must be 9 digits (XXX-XX-XXXX format)";
-      }
-    } else {
-      newErrors.ssn = "Social Security Number is required";
+    // Email validation
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = "Email is invalid";
+    }
+
+    // Phone validation
+    if (!formData.phone.trim()) {
+      errors.phone = "Phone number is required";
+    } else if (!/^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4}$/.test(formData.phone.replace(/\s/g, ''))) {
+      errors.phone = "Phone number is invalid";
+    }
+
+    // SSN validation
+    if (!formData.ssn.trim()) {
+      errors.ssn = "SSN is required";
+    } else if (!/^\d{3}-?\d{2}-?\d{4}$/.test(formData.ssn)) {
+      errors.ssn = "SSN is invalid";
+    }
+
+    // Address validation
+    if (!formData.address.trim()) {
+      errors.address = "Address is required";
     }
 
     // Date of Birth validation
-    if (dateOfBirth) {
-      const dobDate = new Date(dateOfBirth);
-      const today = new Date();
-      
-      // Check if date is valid
-      if (isNaN(dobDate.getTime())) {
-        newErrors.dateOfBirth = "Please enter a valid date";
-      } 
-      // Check if date is in the future
-      else if (dobDate > today) {
-        newErrors.dateOfBirth = "Date of birth cannot be in the future";
+    if (!formData.dateOfBirth) {
+      errors.dateOfBirth = "Date of birth is required";
+    }
+
+    // Package validation
+    if (!formData.package) {
+      errors.package = "Please select a package";
+    }
+
+    // File validation
+    if (!formData.utilityBill || formData.utilityBill.length === 0) {
+      errors.utilityBill = "Utility bill is required";
+    }
+
+    if (!formData.driverLicense || formData.driverLicense.length === 0) {
+      errors.driverLicense = "Driver's license is required";
+    }
+
+    // Payment method validation
+    if (isAcceptReady) {
+      // Only store card error in one place to avoid duplicates
+      // Don't show validation error if meta.error already displays it
+      if (!cardNumber.trim()) {
+        errors.card = "Valid card number is required";
       }
-      // Check if person is at least 18 years old
-      else {
-        const ageDifMs = today.getTime() - dobDate.getTime();
-        const ageDate = new Date(ageDifMs);
-        const age = Math.abs(ageDate.getUTCFullYear() - 1970);
-        
-        if (age < 18) {
-          newErrors.dateOfBirth = "You must be at least 18 years old";
-        }
-      }
-    } else {
-      newErrors.dateOfBirth = "Date of Birth is required";
     }
 
-    if (!pkg) newErrors.package = "Please select a package";
-    if (!address) newErrors.address = "Address is required";
-    
-    // Updated file validation logic
-    if (!utilityBill || utilityBill.length === 0) {
-      newErrors.utilityBill = "Please upload a utility bill document";
-    }
-
-    if (!driverLicense || driverLicense.length === 0) {
-      newErrors.driverLicense = "Please upload a driver's license document";
-    }
-
-    // Card validation
-    if (!cardNumber || meta.error) {
-      newErrors.cardNumber = "Valid card number is required";
-    }
-  
-    if (!cvc || !/^\d{3,4}$/.test(cvc)) {
-      newErrors.cvc = "Valid CVC required";
-    }
-
-    // If meta.error exists, add it
-    if (meta.error) newErrors.metaError = meta.error;
-
-    return Object.keys(newErrors).length > 0 ? newErrors : null;
+    return Object.keys(errors).length ? errors : null;
   };
 
   // Function to reset the form after successful submission
@@ -475,168 +509,165 @@ const OnboardingForm = () => {
     });
   };
 
-  // Modified handleSubmit for better error handling
+  // Create API instance outside the handler for better memory management
+  const fileApiWithProgress = useMemo(() => (baseUrl: string) => {
+    return axios.create({
+      baseURL: baseUrl,
+      timeout: 120000, // 2 minutes timeout for larger files
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  }, []);
+
+  // Completely restructured handleSubmit for better error handling and flow
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
+    
+    // Start with form in loading state
+    setStatus("loading");
+    setMessage("Processing your application...");
+    
     try {
-      // Step 2: Set loading state
-      setStatus("loading");
-      setMessage("Processing your application...");
-
+      // STEP 1: Validate form
+      const formErrors = validateForm();
+      if (formErrors) {
+        setErrors(formErrors);
+        const firstErrorField = Object.keys(formErrors)[0];
+        const errorElement = document.getElementById(firstErrorField);
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          errorElement.focus();
+        }
+        throw new Error("Please correct the errors in the form.");
+      }
+      
+      // Clear any previous errors since validation passed
+      setErrors({});
+      
+      // STEP 2: Check API configuration
+      const apiBaseUrl = getApiBaseUrl();
+      if (!apiBaseUrl) {
+        throw new Error("System configuration error. Please try again later or contact support.");
+      }
+      
+      // STEP 3: Verify document uploads are ready
+      const utilityBillFile = formData.utilityBill && formData.utilityBill.item(0);
+      const driverLicenseFile = formData.driverLicense && formData.driverLicense.item(0);
+      
+      if (!utilityBillFile || !driverLicenseFile) {
+        throw new Error("Required documents are missing. Please upload both utility bill and driver's license.");
+      }
+      
+      // STEP 4: Prepare and validate data
+      // Clean phone number
+      const cleanedPhone = formData.phone.replace(/\D/g, '');
+      if (cleanedPhone.length !== 10) {
+        setErrors(prev => ({...prev, phone: "Phone number must be 10 digits"}));
+        throw new Error("Phone number must be 10 digits.");
+      }
+      
+      const formattedPhone = `+1${cleanedPhone}`;
+      
+      // Clean SSN
+      const ssnDigits = formData.ssn.replace(/\D/g, '');
+      if (ssnDigits.length !== 9) {
+        setErrors(prev => ({...prev, ssn: "SSN must be 9 digits"}));
+        throw new Error("SSN must be 9 digits.");
+      }
+      
+      // STEP 5: Verify payment data is ready
+      if (!isAcceptReady) {
+        throw new Error("Payment processing system is not ready. Please try again.");
+      }
+      
+      if (meta.error) {
+        throw new Error(`Payment card error: ${meta.error}`);
+      }
+      
+      // STEP 6: Upload documents
+      setMessage("Uploading documents... Please do not close this window.");
+      setIsUploading(true);
+      setUploadProgress({ utilityBill: 0, driverLicense: 0 });
+      
+      let utilityBillUrl;
+      let driverLicenseUrl;
+      
       try {
-        // Step 3: Validate form one more time
-        const formErrors = validateForm();
-        if (formErrors) {
-          setErrors(formErrors);
-          const firstErrorField = Object.keys(formErrors)[0];
-          const errorElement = document.getElementById(firstErrorField);
-          if (errorElement) {
-            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            errorElement.focus();
-          }
-          setStatus("error");
-          setMessage("Please correct the errors in the form.");
-          showErrorToast("Please correct the errors in the form.");
-          return;
-        }
+        // Use the memoized API instance
+        const api = fileApiWithProgress(apiBaseUrl);
         
-        // Clear any previous errors since validation passed
-        setErrors({});
-
-        // Step 4: Verify API configuration
-        const apiBaseUrl = getApiBaseUrl();
-        if (!apiBaseUrl) {
-          setStatus("error");
-          setMessage("System configuration error. Please try again later or contact support.");
-          return;
-        }
-
-        // Step 5: Verify document uploads
-        const utilityBillFile = formData.utilityBill && formData.utilityBill.item(0);
-        const driverLicenseFile = formData.driverLicense && formData.driverLicense.item(0);
-        
-        if (!utilityBillFile || !driverLicenseFile) {
-          setStatus("error");
-          setMessage("Required documents are missing. Please upload both utility bill and driver's license.");
-          showErrorToast("Required documents are missing. Please upload both utility bill and driver's license.");
-          return;
-        }
-        
-        // Step 6: Prepare and validate data for submission
-        // Clean phone number
-        const cleanedPhone = formData.phone.replace(/\D/g, '');
-        if (cleanedPhone.length !== 10) {
-          setStatus("error");
-          setMessage("Phone number must be 10 digits.");
-          showErrorToast("Phone number must be 10 digits.");
-          setErrors(prev => ({...prev, phone: "Phone number must be 10 digits"}));
-          return;
-        }
-        
-        const formattedPhone = `+1${cleanedPhone}`;
-        
-        // Clean SSN
-        const ssnDigits = formData.ssn.replace(/\D/g, '');
-        if (ssnDigits.length !== 9) {
-          setStatus("error");
-          setMessage("SSN must be 9 digits.");
-          showErrorToast("SSN must be 9 digits.");
-          setErrors(prev => ({...prev, ssn: "SSN must be 9 digits"}));
-          return;
-        }
-        
-        // Validate payment inputs are ready
-        if (!isAcceptReady) {
-          setMessage("Payment processing system is not ready. Please try again.");
-          setStatus("error");
-          showErrorToast("Payment processing system is not ready. Please try again.");
-          return;
-        }
-        
-        if (meta.error) {
-          setMessage(`Payment card error: ${meta.error}`);
-          setStatus("error");
-          showErrorToast(`Payment card error: ${meta.error}`);
-          return;
-        }
-        
-        // Step 7: Upload files first
-        try {
-          // Start upload process
-          setMessage("Uploading documents... Please do not close this window.");
-          setIsUploading(true);
-          setUploadProgress({ utilityBill: 0, driverLicense: 0 });
+        // Fixing the uploadSingleFile function to handle concurrent uploads with individual progress
+        const uploadSingleFile = async (file: File, fieldName: string) => {
+          const singleFileFormData = new FormData();
+          singleFileFormData.append('files', file);
+          singleFileFormData.append('isPublic', 'false');
           
-          const fileApiWithProgress = axios.create({
-            baseURL: apiBaseUrl,
-            timeout: 120000, // Increased timeout to 2 minutes for larger files
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          });
+          // Set uploading state for this specific file only
+          setFileUploads(prev => ({
+            ...prev,
+            [fieldName]: {uploading: true, completed: false, error: false}
+          }));
           
-          // Function to upload a single file with progress tracking
-          const uploadSingleFile = async (file: File, fieldName: string) => {
-            const singleFileFormData = new FormData();
-            singleFileFormData.append('files', file);
-            singleFileFormData.append('isPublic', 'false');
+          // Reset progress for this file before starting
+          setUploadProgress(prev => ({
+            ...prev,
+            [fieldName]: 0
+          }));
+          
+          try {
+            const response = await api.post('/media', singleFileFormData, {
+              onUploadProgress: (progressEvent) => {
+                // This callback runs many times during upload, we need a functional update
+                // to ensure we're not interfering with other concurrent uploads
+                setUploadProgress(prev => {
+                  // Important: Create a new object to avoid state batching issues
+                  return {
+                    ...prev,
+                    // Only update this specific file's progress
+                    [fieldName]: Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1))
+                  };
+                });
+              }
+            });
             
+            // Set completed state only for this file
             setFileUploads(prev => ({
               ...prev,
-              [fieldName]: {uploading: true, completed: false}
+              [fieldName]: {uploading: false, completed: true, error: false}
             }));
             
-            try {
-              const response = await fileApiWithProgress.post('/media', singleFileFormData, {
-                onUploadProgress: (progressEvent) => {
-                  const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-                  setUploadProgress(prev => ({
-                    ...prev,
-                    [fieldName]: percentCompleted
-                  }));
-                },
-                headers: {
-                  'Content-Type': 'multipart/form-data'
-                }
-              });
-              
-              setFileUploads(prev => ({
-                ...prev,
-                [fieldName]: {uploading: false, completed: true}
-              }));
-              
-              return response.data;
-            } catch (uploadError: any) {
-              setFileUploads(prev => ({
-                ...prev,
-                [fieldName]: {uploading: false, completed: false, error: true}
-              }));
-              
-              // Provide specific error messages based on error type
-              if (axios.isAxiosError(uploadError)) {
-                if (uploadError.code === 'ECONNABORTED') {
-                  throw new Error(`${fieldName} upload timed out. Please try again with a smaller file or better connection.`);
-                }
-                if (uploadError.response?.status === 413) {
-                  throw new Error(`${fieldName} is too large. Please upload a smaller file (max 10MB).`);
-                }
+            return response.data;
+          } catch (uploadError: any) {
+            // Update error state only for this file
+            setFileUploads(prev => ({
+              ...prev,
+              [fieldName]: {uploading: false, completed: false, error: true}
+            }));
+            
+            // Handle specific upload errors
+            if (axios.isAxiosError(uploadError)) {
+              if (uploadError.code === 'ECONNABORTED') {
+                throw new Error(`${fieldName} upload timed out. Please try again with a smaller file or better connection.`);
               }
-              
-              throw new Error(`Failed to upload ${fieldName}. ${uploadError.message || 'Please try again.'}`);
+              if (uploadError.response?.status === 413) {
+                throw new Error(`${fieldName} is too large. Please upload a smaller file (max 10MB).`);
+              }
             }
-          };
-          
-          // Upload both files concurrently
-          setMessage("Uploading documents... Please wait.");
+            
+            throw new Error(`Failed to upload ${fieldName}. ${uploadError.message || 'Please try again.'}`);
+          }
+        };
+        
+        // Use Promise.all for parallel uploads but with proper individual progress handling
+        setMessage("Uploading documents... Please wait.");
+        
+        try {
+          // Run uploads in parallel for better speed
           const [utilityBillResponse, driverLicenseResponse] = await Promise.all([
             uploadSingleFile(utilityBillFile, 'utilityBill'),
             uploadSingleFile(driverLicenseFile, 'driverLicense')
-          ]).catch(error => {
-            // Centralized error handling for upload failures
-            setIsUploading(false);
-            throw error;
-          });
+          ]);
           
           // Validate upload results
           if (!utilityBillResponse.files || utilityBillResponse.files.length === 0) {
@@ -647,170 +678,299 @@ const OnboardingForm = () => {
             throw new Error("Failed to upload driver's license. Please try again.");
           }
           
-          // Documents uploaded successfully, proceed with payment
-          const utilityBillUrl = utilityBillResponse.files[0]._id;
-          const driverLicenseUrl = driverLicenseResponse.files[0]._id;
+          // Set the URLs after successful uploads
+          utilityBillUrl = utilityBillResponse.files[0]._id;
+          driverLicenseUrl = driverLicenseResponse.files[0]._id;
           
-          // Step 8: Process payment now that documents are uploaded
-          setMessage("Processing payment... Please do not close this window.");
-          
-          let dataValue = "";
-          let dataDescriptor = "";
-          
-          try {
-            // Original payment processing
-            const secureData = {
-              authData: {
-                clientKey: PUBLIC_CLIENT_KEY,
-                apiLoginID: API_LOGIN_ID,
-              },
-              cardData: {
-                cardNumber: cardNumber.replace(/\s/g, ""),
-                month: expiryDate.split("/")[0].trim(),
-                year: `20${expiryDate.split("/")[1].trim()}`,
-                cardCode: cvc,
-              },
-            };
-            
-            // Get payment token
-            const acceptResponse: any = await new Promise((resolve, reject) => {
-              if (!window.Accept?.dispatchData) {
-                throw new Error("Accept.js is not ready");
-              }
-              window.Accept.dispatchData(secureData, (response: any) => {
-                if (response.messages.resultCode === "Error") {
-                  reject(new Error(response.messages.message[0].text));
-                } else {
-                  resolve(response);
-                }
-              });
-            });
-            
-            dataValue = acceptResponse.opaqueData.dataValue;
-            dataDescriptor = acceptResponse.opaqueData.dataDescriptor;
-            
-            if (!dataValue || !dataDescriptor) {
-              throw new Error("Payment processing failed. Please check your card information.");
-            }
-            
-            // Step 9: Submit credit repair request after successful payment and uploads
-            setMessage("Finalizing your application...");
-            
-            // Get encryption keys from server for secure transmission
-            const { publicKey, sessionId } = await getEncryptionKeys();
-            
-            // Prepare data for submission
-            const submissionData = {
-              fullName: formData.name,
-              email: formData.email,
-              phoneNumber: formattedPhone,
-              referralCode: formData.referralCode || undefined,
-              address: formData.address,
-              socialSecurityNumber: ssnDigits, // Use cleaned SSN without dashes
-              dateofBirth: formData.dateOfBirth,
-              utilityBill: utilityBillUrl,
-              driverLicense: driverLicenseUrl,
-              packageType: formData.package,
-              packagePrice: packageOptions.find((p) => p.value === formData.package)?.price || 0,
-              dataValue: dataValue,
-              dataDescriptor: dataDescriptor,
-              requestRecordExpunction: formData.requestRecordExpunction
-            };
-            
-            // Clear any lingering error messages before final submission
-            setErrors({});
-            
-            // Encrypt the entire form data object according to backend requirements
-            try {
-              const encryptedPayload = encryptFormData(submissionData, publicKey, sessionId);
-              
-              // Submit the encrypted payload
-              const submissionResponse = await submitCreditRepairRequest(encryptedPayload);
-              
-              // Step 10: Success handling
-              setStatus("success");
-              setMessage("Application submitted successfully! We'll get back to you soon.");
-              showSuccessToast("Your credit repair application has been submitted successfully! We'll be in touch soon.");
-              
-              // Clear the form after a short delay to allow the user to see the success message
-              // setTimeout(() => {
-              //   resetForm();
-              // }, 3000);
-            } catch (error) {
-              // Handle submission errors
-              let errorMessage = "An error occurred during submission.";
-              
-              if (error instanceof Error) {
-                // If it contains "cancelled" in the message, it might be a false negative
-                if (error.message.toLowerCase().includes('cancel')) {
-                  // Still show a notification but make it informative rather than an error
-                  setMessage("Your application is being processed. If you don't receive confirmation within 15 minutes, please contact support.");
-                  showSuccessToast("Your application is being processed. You'll receive a confirmation email shortly.");
-                  
-                  // Reset the form after a delay as the submission likely went through
-                  // setTimeout(() => {
-                  //   resetForm();
-                  // }, 3000);
-                  return;
-                }
-                
-                errorMessage = error.message;
-              }
-              
-              // For actual errors (not cancellations)
-              setStatus("error");
-              setMessage(errorMessage);
-              showErrorToast(errorMessage);
-              // Log to error tracking service in production instead of console
-            }
-          } catch (error) {
-            // Payment processing error
-            const errorMessage = error instanceof Error
-              ? `Payment error: ${error.message}`
-              : "Payment processing failed. Please try again.";
-            console.error("Payment processing error:", error);
-            if (error instanceof Error) {
-              console.error(`Error name: ${error.name}, message: ${error.message}`);
-              console.error(`Error stack: ${error.stack}`);
-            }
-            setMessage(errorMessage);
-            setStatus("error");
-            showErrorToast(errorMessage);
-            // Log to error tracking service in production instead of console
-          } finally {
-            setIsUploading(false);
-          }
         } catch (error) {
-          // Document upload error handling
-          console.error("Document upload error:", error);
+          // Handle document upload errors
+          let uploadErrorMessage = "An unexpected error occurred during document upload. Please try again later.";
+          
           if (error instanceof Error) {
-            console.error(`Error name: ${error.name}, message: ${error.message}`);
-            console.error(`Error stack: ${error.stack}`);
-            setMessage(`Document upload error: ${error.message}`);
-          } else {
-            const errorMessage = "An unexpected error occurred during document upload. Please try again later.";
-            console.error("Unknown document upload error:", error);
-            setMessage(errorMessage);
+            uploadErrorMessage = `Document upload error: ${error.message}`;
           }
           
-          setStatus("error");
-          showErrorToast("Failed to upload documents. Please try again.");
+          throw new Error(uploadErrorMessage);
+        }
+        
+      } catch (error) {
+        // Handle document upload errors
+        let uploadErrorMessage = "An unexpected error occurred during document upload. Please try again later.";
+        
+        if (error instanceof Error) {
+          uploadErrorMessage = `Document upload error: ${error.message}`;
+        }
+        
+        throw new Error(uploadErrorMessage);
+      }
+      
+      // STEP 7: Process payment
+      setMessage("Processing payment... Please do not close this window.");
+      
+      let dataValue;
+      let dataDescriptor;
+      
+      try {
+        const secureData = {
+          authData: {
+            clientKey: PUBLIC_CLIENT_KEY,
+            apiLoginID: API_LOGIN_ID,
+          },
+          cardData: {
+            cardNumber: cardNumber.replace(/\s/g, ""),
+            month: expiryDate.split("/")[0].trim(),
+            year: `20${expiryDate.split("/")[1].trim()}`,
+            cardCode: cvc,
+          },
+        };
+        
+        // Get payment token
+        const acceptResponse: any = await new Promise((resolve, reject) => {
+          if (!window.Accept?.dispatchData) {
+            throw new Error("Accept.js is not ready");
+          }
+          window.Accept.dispatchData(secureData, (response: any) => {
+            if (response.messages.resultCode === "Error") {
+              reject(new Error(response.messages.message[0].text));
+            } else {
+              resolve(response);
+            }
+          });
+        });
+        
+        dataValue = acceptResponse.opaqueData.dataValue;
+        dataDescriptor = acceptResponse.opaqueData.dataDescriptor;
+        
+        if (!dataValue || !dataDescriptor) {
+          throw new Error("Payment processing failed. Please check your card information.");
         }
       } catch (error) {
-        // Log to error tracking service in production instead of console
-        const errorMessage = "An unexpected error occurred. Please try again later.";
-        console.error(error);
-        setStatus("error");
-        setMessage(errorMessage);
-        showErrorToast(errorMessage);
+        // Only handle Accept.js errors here
+        let errorMessage = "Payment processing failed. Please try again.";
+        
+        if (error instanceof Error) {
+          errorMessage = `Payment error: ${error.message}`;
+        }
+        
+        throw new Error(errorMessage);
       }
+      
+      // STEP 8: Submit the credit repair request
+      setMessage("Finalizing your application...");
+      
+      try {
+        // Get encryption keys
+        const { publicKey, sessionId } = await getEncryptionKeys();
+        
+        // Prepare data for submission
+        const submissionData = {
+          fullName: formData.name,
+          email: formData.email,
+          phoneNumber: formattedPhone,
+          referralCode: formData.referralCode || undefined,
+          address: formData.address,
+          socialSecurityNumber: ssnDigits,
+          dateofBirth: formData.dateOfBirth,
+          utilityBill: utilityBillUrl,
+          driverLicense: driverLicenseUrl,
+          packageType: formData.package,
+          packagePrice: packageOptions.find((p) => p.value === formData.package)?.price || 0,
+          dataValue: dataValue,
+          dataDescriptor: dataDescriptor,
+          requestRecordExpunction: formData.requestRecordExpunction
+        };
+        
+        // Encrypt the submission data
+        const encryptedPayload = encryptFormData(submissionData, publicKey, sessionId);
+        
+        // Submit the encrypted payload
+        const response = await submitCreditRepairRequest(encryptedPayload);
+        logDebug("Submission successful, response:", response);
+        
+        // Success - show success message
+        setStatus("success");
+        setMessage("Application submitted successfully! We'll get back to you soon.");
+        showSuccessToast("Your credit repair application has been submitted successfully! We'll be in touch soon.");
+        
+        // Optional: Reset form after success
+        setTimeout(() => {
+          resetForm();
+        }, 3000);
+        
+      } catch (error) {
+        // Handle API submission errors - critically important for payment errors!
+        let submitErrorMessage = "An error occurred during submission.";
+        logDebug("Submission or payment error caught:", error);
+        
+        // Special handling for payment errors (HTTP 402)
+        if (axios.isAxiosError(error) && error.response) {
+          logDebug("API error response:", {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: JSON.stringify(error.response.data)
+          });
+          
+          if (error.response.status === 402) {
+            try {
+              const paymentError = error.response.data as PaymentError;
+              logDebug("Payment error details:", paymentError);
+              const details = paymentError?.details || { message: "Unknown payment error" };
+              
+              // Map response codes to user-friendly messages - EXPANDED
+              const errorMessages: Record<string, string> = {
+                '2': 'Your card was declined.',
+                '3': 'This card requires additional verification.',
+                '4': 'This card has insufficient funds.',
+                '6': 'Invalid card information. Please check your card details.',
+                '7': 'The credit card has expired.',
+                '8': 'The credit card has an invalid expiration date.',
+                '11': 'A duplicate transaction has been submitted.',
+                '27': 'The transaction resulted in an address verification mismatch.',
+                '44': 'This card has been declined for your protection.',
+                '45': 'This card has been flagged for potential fraud.',
+                '200': 'This transaction has been declined.',
+                '300': 'The transaction was rejected by the payment processor.'
+              };
+              
+              // Add CVV response code messages
+              const cvvMessages: Record<string, string> = {
+                'N': 'The CVV code you entered doesn\'t match your card.',
+                'P': 'Your card issuer couldn\'t verify your CVV code.',
+                'S': 'Your card requires a CVV code but none was provided.',
+                'U': 'Your card issuer doesn\'t support CVV verification.'
+              };
+              
+              // Add retry suggestions based on error type
+              const getRetrySuggestion = (errorCode: string) => {
+                switch(errorCode) {
+                  case '2': // Declined
+                    return "Please try another card or payment method.";
+                  case '3': // Additional verification
+                    return "Please contact your bank for more information.";
+                  case '4': // Insufficient funds
+                    return "Please try another card or payment method.";
+                  case '6': // Invalid card
+                    return "Please carefully check your card number and try again.";
+                  case '7': // Expired
+                    return "Please use a card that hasn't expired.";
+                  case '8': // Invalid expiration
+                    return "Please check the expiration date and try again.";
+                  case '45': // Fraud
+                  case '44': // Declined for protection
+                    return "Please contact your bank or use a different card.";
+                  default:
+                    return "Please try again or use a different payment method.";
+                }
+              };
+              
+              // Try to get the most specific error message
+              if (details.raw?.transactionResponse?.errors && details.raw.transactionResponse.errors.length > 0) {
+                const transactionError = details.raw.transactionResponse.errors[0];
+                submitErrorMessage = errorMessages[transactionError.errorCode] || transactionError.errorText;
+                
+                // Add retry suggestion
+                if (errorMessages[transactionError.errorCode]) {
+                  submitErrorMessage += " " + getRetrySuggestion(transactionError.errorCode);
+                }
+                
+                logDebug("Using transaction error code:", transactionError.errorCode);
+              } 
+              else if (details.responseCode && errorMessages[details.responseCode]) {
+                submitErrorMessage = errorMessages[details.responseCode];
+                
+                // Add retry suggestion
+                submitErrorMessage += " " + getRetrySuggestion(details.responseCode);
+                
+                logDebug("Using response code:", details.responseCode);
+              } 
+              else {
+                submitErrorMessage = details.message || paymentError.error || "Payment failed. Please try again.";
+                logDebug("Using fallback error message");
+              }
+              
+              // Check for CVV-specific errors with null check
+              if (details.raw?.transactionResponse?.cvvResultCode) {
+                const cvvCode = details.raw.transactionResponse.cvvResultCode;
+                if (cvvMessages[cvvCode] && cvvCode !== 'M') { // M is success
+                  // If we already have a general decline message, add CVV info
+                  if (submitErrorMessage.includes('declined') || submitErrorMessage.includes('invalid')) {
+                    submitErrorMessage += " " + cvvMessages[cvvCode];
+                  } else {
+                    submitErrorMessage = cvvMessages[cvvCode] + " Please try again.";
+                  }
+                  logDebug("Using CVV error code:", cvvCode);
+                }
+              }
+              
+              // Add card info if available with additional null checks
+              if (details.raw?.transactionResponse?.accountType && 
+                  details.raw.transactionResponse?.accountNumber) {
+                submitErrorMessage += ` (${details.raw.transactionResponse.accountType} ending in ${
+                  details.raw.transactionResponse.accountNumber.replace('XXXX', '')
+                })`;
+              }
+            } catch (parseError) {
+              logError("Error parsing payment error response:", parseError);
+              submitErrorMessage = "Payment failed. Please check your card details and try again.";
+            }
+          } else if (error.response.status === 400) {
+            submitErrorMessage = "Invalid submission data. Please check your information and try again.";
+          } else if (error.response.status === 500) {
+            submitErrorMessage = "Server error. Please try again later or contact support.";
+          } else {
+            submitErrorMessage = `Submission error (${error.response.status}): ${error.response?.data?.message || error.message}`;
+          }
+        } else if (error instanceof Error) {
+          // Network error detection
+          if (error.message.includes('Network Error') || error.message.includes('ECONNABORTED')) {
+            submitErrorMessage = "Cannot connect to payment service. Please check your internet connection and try again.";
+            logDebug("Network error detected");
+          }
+          // False negative detection - if the message contains "cancel" it might be a false negative
+          else if (error.message.toLowerCase().includes('cancel')) {
+            setStatus("success");
+            setMessage("Your application is being processed. If you don't receive confirmation within 15 minutes, please contact support.");
+            showSuccessToast("Your application is being processed. You'll receive a confirmation email shortly.");
+            return;
+          } else {
+            submitErrorMessage = error.message;
+          }
+        }
+        
+        throw new Error(submitErrorMessage);
+      }
+      
     } catch (error) {
-      // Log to error tracking service in production instead of console
-      const errorMessage = "An unexpected error occurred. Please try again later.";
-      console.error(error);
+      // MAIN ERROR HANDLER - All errors bubble up to here
+      setIsUploading(false);
       setStatus("error");
-      setMessage(errorMessage);
-      showErrorToast(errorMessage);
+      
+      let finalErrorMessage = "An unexpected error occurred. Please try again later.";
+      
+      if (error instanceof Error) {
+        finalErrorMessage = error.message;
+        // Log error details safely
+        logError("Form submission error:", {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      } else {
+        // Handle non-Error objects
+        logError("Form submission error (non-Error object):", 
+          typeof error === 'object' ? JSON.stringify(error) : error);
+      }
+      
+      setMessage(finalErrorMessage);
+      showErrorToast(finalErrorMessage);
+    } finally {
+      // Always clean up, regardless of success or failure
+      setIsUploading(false);
+      setUploadProgress({ utilityBill: 0, driverLicense: 0 });
+      setFileUploads({
+        utilityBill: {uploading: false, completed: false},
+        driverLicense: {uploading: false, completed: false}
+      });
     }
   };
 
@@ -1162,6 +1322,7 @@ const OnboardingForm = () => {
                 </div>
               )}
             </PaymentInputsContainer>
+            {/* Only show meta.error if it's related to formatting or validation */}
             {meta.error && (
               <div className="text-red-500 text-sm mt-1">{meta.error}</div>
             )}
@@ -1237,9 +1398,11 @@ const OnboardingForm = () => {
           <div className="md:col-span-2">
             <div className="mb-2 p-4 bg-red-100 text-red-800 rounded">
               <ul className="list-disc list-inside">
-                {Object.keys(errors).map((err, idx) => (
-                  <li key={idx}>{errors[err]}</li>
-                ))}
+                {Object.keys(errors)
+                  .filter(err => err !== 'card') // Filter out card error as it's shown by meta.error
+                  .map((err, idx) => (
+                    <li key={idx}>{errors[err]}</li>
+                  ))}
               </ul>
             </div>
           </div>

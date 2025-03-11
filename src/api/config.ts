@@ -8,8 +8,8 @@
 import axios, { AxiosInstance, AxiosError, isAxiosError, CancelToken } from 'axios';
 
 // Set reasonable timeout for all API calls (in milliseconds)
-const DEFAULT_TIMEOUT = 60000; // 60 seconds (increased from 30)
-const UPLOAD_TIMEOUT = 180000; // 3 minutes for file uploads (increased from 2)
+const DEFAULT_TIMEOUT = 180000; // 3 minutes
+const UPLOAD_TIMEOUT = 360000; // 6 minutes for file uploads
 
 // Create axios instance with base URL from environment variable
 export const api: AxiosInstance = axios.create({
@@ -32,13 +32,19 @@ function hasProperty<K extends string>(obj: unknown, prop: K): obj is Record<K, 
 }
 
 /**
- * Generic API error handler
- * 
- * @param error - The error object from axios
- * @param defaultMessage - Default message to show if error info is not available
- * @throws Error with appropriate message
+ * Handle API errors in a consistent way
+ * Special handling for payment errors (402) to preserve the detailed error structure
  */
 export const handleApiError = (error: any, defaultMessage = 'An error occurred'): never => {
+  console.log("API Error in handleApiError:", error?.response?.status, error?.response?.data);
+  
+  // For payment errors (402), preserve the entire error structure
+  if (error?.response?.status === 402) {
+    // Instead of extracting just the message, throw the entire error object
+    // so we can access detailed payment error information
+    throw error;
+  }
+  
   if (error?.response?.data?.message) {
     throw new Error(error.response.data.message);
   }
