@@ -14,7 +14,7 @@ export const footerLinks = {
   contact: [
     { text: "1-214-444-9837", href: "tel:12144449837" },
     { text: "Cred@Gznite.Com", href: "mailto:Cred@Gznite.Com" },
-    { text: "Disclosure Document", href: "/Customer-Disclosure.pdf" },
+    { text: "Disclosure Document", href: "/docs/customer-disclosure.pdf" },
   ],
   navigation: [
     { text: "Home", href: "/" },

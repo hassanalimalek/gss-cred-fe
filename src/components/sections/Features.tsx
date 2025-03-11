@@ -49,6 +49,23 @@ const FeatureImage = ({ src, alt, className }: ImageProps) => (
  * Individual feature card component with animation and accessibility attributes
  */
 const FeatureCard = ({ icon, title, description, delay }: FeatureCardProps) => {
+  // Render title - make "Transparent Process" a clickable link
+  const renderTitle = () => {
+    if (title === "Transparent Process") {
+      return (
+        <a 
+          href="/docs/mulligan_course_map.pdf" 
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-yellow-600 hover:text-yellow-700 transition-colors"
+        >
+          {title}
+        </a>
+      );
+    }
+    return title;
+  };
+
   return (
     <motion.article
       initial={{ y: 50, opacity: 0 }}
@@ -68,7 +85,7 @@ const FeatureCard = ({ icon, title, description, delay }: FeatureCardProps) => {
           id={`feature-${title.toLowerCase().replace(/\s+/g, '-')}`}
           className="mt-4 text-2xl font-bold text-[#0A142F] text-center font-['PT_Serif']"
         >
-          {title}
+          {renderTitle()}
         </h3>
         <p className="p-2 mt-6 text-base sm:text-lg leading-relaxed text-[#525A6D] text-center min-h-[96px]">
           {description}

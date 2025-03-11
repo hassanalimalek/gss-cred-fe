@@ -180,8 +180,8 @@ const OnboardingForm = () => {
   // console.log("API_LOGIN_ID", API_LOGIN_ID);
 
   const packageOptions = [
-    { value: "TIER_1", label: "Tier 1", price: 2199 },
-    { value: "TIER_2", label: "Tier 2", price: 2499 },
+    { value: "TIER_1", label: "Tier 1", price: 1000.02 },
+    { value: "TIER_2", label: "Tier 2", price: 1000.02 },
     { value: "TIER_3", label: "Tier 3", price: 3499 },
     {value:"CUSTOM", label:"Custom", price:1}
   ];
@@ -733,9 +733,9 @@ const OnboardingForm = () => {
               showSuccessToast("Your credit repair application has been submitted successfully! We'll be in touch soon.");
               
               // Clear the form after a short delay to allow the user to see the success message
-              setTimeout(() => {
-                resetForm();
-              }, 3000);
+              // setTimeout(() => {
+              //   resetForm();
+              // }, 3000);
             } catch (error) {
               // Handle submission errors
               let errorMessage = "An error occurred during submission.";
@@ -748,9 +748,9 @@ const OnboardingForm = () => {
                   showSuccessToast("Your application is being processed. You'll receive a confirmation email shortly.");
                   
                   // Reset the form after a delay as the submission likely went through
-                  setTimeout(() => {
-                    resetForm();
-                  }, 3000);
+                  // setTimeout(() => {
+                  //   resetForm();
+                  // }, 3000);
                   return;
                 }
                 
@@ -1204,7 +1204,7 @@ const OnboardingForm = () => {
             <p className="mt-2">
               Read the{" "}
               <a 
-                href="/Customer-Disclosure.pdf" 
+                href="/docs/customer-disclosure.pdf" 
                 className="text-[#D09C01] hover:underline"
                 target="_blank"
                 rel="noopener noreferrer"
