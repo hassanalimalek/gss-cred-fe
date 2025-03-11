@@ -3,6 +3,7 @@
 import { motion, useInView, UseInViewOptions } from "framer-motion";
 import { useRef } from "react";
 import { useCountAnimation } from "@/hooks/useCountAnimation";
+import { stats } from "@/data/stats";
 
 /**
  * Props for the StatItem component
@@ -34,9 +35,29 @@ const StatItem = ({ number, text, symbol = "+", delay = 0 }: StatItemProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const inViewOptions: UseInViewOptions = { once: true, amount: 0.3 };
   const isInView = useInView(ref, inViewOptions);
-  const numericValue = parseInt(number.replace(/,/g, ""));
-  const animatedValue = useCountAnimation(numericValue, 2000, delay, isInView);
-  const formattedValue = animatedValue.toLocaleString();
+  
+  // Parse the numeric value correctly
+  const numericValue = parseFloat(number.replace(/,/g, ""));
+  
+  // Check if we need to show decimals and how many
+  const decimalPlaces = (() => {
+    const parts = number.split('.');
+    return parts.length > 1 ? parts[1].length : 0;
+  })();
+  
+  // Use the animated value with proper decimal precision
+  const animatedValue = useCountAnimation(
+    numericValue,
+    2000,
+    delay,
+    isInView,
+    decimalPlaces // Pass the decimal precision to the hook
+  );
+  
+  // Format the value with the correct number of decimal places
+  const formattedValue = decimalPlaces > 0 
+    ? animatedValue.toFixed(decimalPlaces) 
+    : Math.round(animatedValue).toLocaleString();
 
   return (
     <motion.div 
@@ -66,14 +87,21 @@ export const Stats = () => {
       aria-label="Company Statistics"
     >
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 md:flex md:items-center md:justify-between gap-6 sm:gap-8 w-full sm:w-[98%] mx-auto">
-          <StatItem number="3,200" text="Negative Items Removed" delay={0.2} />
-          <div className="hidden md:block h-16 w-px bg-[#D09C01]" role="separator" aria-hidden="true"></div>
-          <StatItem number="1,430" text="Satisfied Clients" delay={0.4} />
-          <div className="hidden md:block h-16 w-px bg-[#D09C01]" role="separator" aria-hidden="true"></div>
-          <StatItem number="100" text="Success Rate" symbol="%" delay={0.6} />
-          <div className="hidden md:block h-16 w-px bg-[#D09C01]" role="separator" aria-hidden="true"></div>
-          <StatItem number="6" text="Years Of Experience" delay={0.8} />
+        <div className="grid grid-cols-2 md:grid-cols-5 md:flex md:items-center md:justify-between gap-6 sm:gap-8 w-full sm:w-[98%] mx-auto">
+          {stats.map((stat, index) => (
+            <>
+              {index > 0 && (
+                <div className="hidden md:block h-16 w-px bg-[#D09C01]" role="separator" aria-hidden="true" key={`separator-${index}`} />
+              )}
+              <StatItem 
+                key={`stat-${index}`}
+                number={stat.number} 
+                text={stat.text} 
+                symbol={stat.symbol || "+"} 
+                delay={0.1 + (index * 0.2)} 
+              />
+            </>
+          ))}
         </div>
       </div>
     </section>

@@ -5,8 +5,9 @@ export interface Stat {
 }
 
 export const stats: Stat[] = [
-  { number: "3,200", text: "Negative Items Removed" },
-  { number: "1,430", text: "Satisfied Clients" },
-  { number: "100", text: "Success Rate", symbol: "%" },
-  { number: "6", text: "Years of Experience" },
+  { number: "1,000", text: "Items Removed" },
+  { number: "200", text: "Record Removal" },
+  { number: "99.8", text: "Success Rate", symbol: "%" },
+  { number: "800", text: "Clients" },
+  { number: "8", text: "Years of Experience" },
 ];

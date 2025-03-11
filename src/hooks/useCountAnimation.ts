@@ -6,8 +6,15 @@ import { useState, useRef, useCallback, useEffect } from "react";
  * @param duration - Animation duration in milliseconds
  * @param delay - Delay before starting animation in seconds
  * @param isInView - Whether the element is in viewport
+ * @param precision - Number of decimal places to preserve (default: 0)
  */
-export const useCountAnimation = (end: number, duration: number = 2000, delay: number = 0, isInView: boolean) => {
+export const useCountAnimation = (
+  end: number, 
+  duration: number = 2000, 
+  delay: number = 0, 
+  isInView: boolean,
+  precision: number = 0
+) => {
   const [count, setCount] = useState(0);
   const [hasAnimated, setHasAnimated] = useState(false);
   const frameRef = useRef<number | undefined>(undefined);
@@ -27,19 +34,32 @@ export const useCountAnimation = (end: number, duration: number = 2000, delay: n
 
       // Calculate progress and current value
       const progress = Math.min((now - startTime) / duration, 1);
-      const currentValue = Math.floor(endValue * progress);
+      
+      // Use precision-aware calculation for decimal values
+      const factor = Math.pow(10, precision);
+      let currentValue;
+      
+      if (precision > 0) {
+        // For decimal values (preserve precision)
+        currentValue = Math.round(endValue * progress * factor) / factor;
+      } else {
+        // For integers (floor to avoid jumping ahead)
+        currentValue = Math.floor(endValue * progress);
+      }
 
       setCount(currentValue);
 
       if (progress < 1) {
         frameRef.current = requestAnimationFrame(updateCount);
       } else {
+        // Ensure we end exactly at the target value
+        setCount(endValue);
         setHasAnimated(true);
       }
     };
 
     frameRef.current = requestAnimationFrame(updateCount);
-  }, [end, duration, delay]);
+  }, [end, duration, delay, precision]);
 
   useEffect(() => {
     // Only animate if element is in view and hasn't animated yet
