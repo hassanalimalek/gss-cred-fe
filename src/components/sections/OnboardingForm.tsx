@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { PaymentInputsContainer, usePaymentInputs } from "react-payment-inputs";
-import { submitCreditRepairRequest, getEncryptionKeys, uploadFiles } from "../../api";
+import { submitCreditRepairRequest, getEncryptionKeys } from "../../api";
 import { showSuccessToast, showErrorToast } from "../../utils/toast";
 import axios from 'axios';
-import { encryptFields, encryptFormData } from '../../utils/encryption';
+import { encryptFormData } from '../../utils/encryption';
 import { LoadingSpinner } from "../common/LoadingSpinner";
-import { useRouter } from "next/navigation";
-import { CardIcon } from "../common/CardIcon";
+import { packages } from "../../data/packages";
 
 // Environment-aware logging
 const isProduction = process.env.NODE_ENV === 'production';
@@ -224,20 +223,17 @@ const Spinner = () => (
 );
 
 const OnboardingForm = () => {
-  // Remove client-side only state tracking
-  
   const PUBLIC_CLIENT_KEY = process.env.NEXT_PUBLIC_AUTHORIZE_CLIENT_KEY || "";
   const API_LOGIN_ID = process.env.NEXT_PUBLIC_AUTHORIZE_LOGIN_ID || "";
-  // Remove console logs with sensitive info before production
-  // console.log("PUBLIC_CLIENT_KEY", PUBLIC_CLIENT_KEY);
-  // console.log("API_LOGIN_ID", API_LOGIN_ID);
 
-  const packageOptions = [
-    { value: "TIER_1", label: "Tier 1", price: 2199 },
-    { value: "TIER_2", label: "Tier 2", price: 2499 },
-    { value: "TIER_3", label: "Tier 3", price: 3499 },
-    {value:"CUSTOM", label:"Custom", price:1}
-  ];
+  // Map packages to the format needed for the form
+  const packageOptions = packages.map(pkg => ({
+    value: pkg.name === "Tier 1" ? "TIER_1" : 
+           pkg.name === "Tier 2" ? "TIER_2" : 
+           pkg.name === "Custom" ? "CUSTOM" : "",
+    label: pkg.name,
+    price: pkg.price
+  }));
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -724,7 +720,7 @@ const OnboardingForm = () => {
           },
         };
         
-        // Get payment token
+        // // Get payment token
         const acceptResponse: any = await new Promise((resolve, reject) => {
           if (!window.Accept?.dispatchData) {
             throw new Error("Accept.js is not ready");
@@ -782,10 +778,10 @@ const OnboardingForm = () => {
         
         // Encrypt the submission data
         const encryptedPayload = encryptFormData(submissionData, publicKey, sessionId);
-        
+        console.log("encryptedPayload", encryptedPayload);
         // Submit the encrypted payload
         const response = await submitCreditRepairRequest(encryptedPayload);
-        logDebug("Submission successful, response:", response);
+        logDebug("Submission successful, response:", "test");
         
         // Success - show success message
         setStatus("success");
@@ -973,8 +969,6 @@ const OnboardingForm = () => {
       });
     }
   };
-
-  // We no longer need the convertFileToBase64 function as we're using the uploadFiles API
 
   // Helper: Render a drag-and-drop area or the selected file with remove button
   const renderFileUpload = (fieldName: string, label: string, required: boolean = false) => {
