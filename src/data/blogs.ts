@@ -1,25 +1,25 @@
 export interface BlogPost {
-  id: string;
-  title: string;
-  excerpt: string;
-  category: string;
-  date: string;
-  image: string;
-  slug: string;
-  content: string;
+	id: string;
+	title: string;
+	excerpt: string;
+	category: string;
+	date: string;
+	image: string;
+	slug: string;
+	content: string;
 }
 
 export const blogPosts: BlogPost[] = [
-  {
-    id: "1",
-    title: "How To Rebuild Your Credit Score After Bankruptcy In 2025",
-    excerpt:
-      "Understanding the 7-10 Year Impact a| The Real Truth About Bankruptcy's Timeline Filing for bankruptcy feels like hitting the reset button on your financial",
-    category: "CREDIT BUILDING",
-    date: "Feb 8, 2025",
-    image: "/images/magnifying-papers.webp",
-    slug: "rebuild-credit-after-bankruptcy",
-    content: `
+	{
+		id: "1",
+		title: "How To Rebuild Your Credit Score After Bankruptcy In 2025",
+		excerpt:
+			" Understanding the 7-10 Year Impact a| The Real Truth About Bankruptcy's Timeline Filing for bankruptcy feels like hitting the reset button on your financial",
+		category: "CREDIT BUILDING",
+		date: "Feb 8, 2025",
+		image: "/images/magnifying-papers.webp",
+		slug: "rebuild-credit-after-bankruptcy",
+		content: `
 Rebuilding your credit score after bankruptcy can feel like an uphill battle, but it is a journey that starts with understanding your past and building a strategy for a secure financial future. Bankruptcy leaves a long-lasting mark on your credit report, but with deliberate planning and disciplined financial habits, you can gradually improve your credit profile.
 
 ### Understanding Bankruptcy's Impact
@@ -57,17 +57,17 @@ Rebuilding your credit is not a quick fix; it's a long-term commitment. As your 
 ### Final Thoughts
 Every financial recovery journey is unique. With persistence, informed decisions, and sometimes professional guidance, you can overcome the challenges posed by bankruptcy. This roadmap is designed to help you regain control of your financial future and ultimately secure better credit opportunities.
     `,
-  },
-  {
-    id: "2",
-    title: "5 Essential Steps to Improve Your Credit Score in 2025",
-    excerpt:
-      "Discover proven strategies and expert tips to boost your credit score effectively. Learn about credit utilization, payment history, and more.",
-    category: "CREDIT TIPS",
-    date: "Jan 15, 2025",
-    image: "/images/improve-credit-score.webp",
-    slug: "improve-credit-score-steps",
-    content: `
+	},
+	{
+		id: "2",
+		title: "5 Essential Steps to Improve Your Credit Score in 2025",
+		excerpt:
+			"Discover proven strategies and expert tips to boost your credit score effectively. Learn about credit utilization, payment history, and more.",
+		category: "CREDIT TIPS",
+		date: "Jan 15, 2025",
+		image: "/images/improve-credit-score.webp",
+		slug: "improve-credit-score-steps",
+		content: `
 Improving your credit score is a fundamental step toward achieving financial stability and unlocking better borrowing opportunities. In 2025, when economic conditions continue to evolve, a proactive approach to credit management is more important than ever. This guide dives deep into five essential steps to help you elevate your credit score and secure a stronger financial future.
 
 ### Step 1: Review and Understand Your Credit Report
@@ -121,5 +121,5 @@ Improving your credit score is a fundamental step toward achieving financial sta
 ### Conclusion
 Building a strong credit score is a marathon, not a sprint. By following these five essential steps—reviewing your credit report, managing credit utilization, prioritizing on-time payments, diversifying your credit mix, and maintaining continuous monitoring—you lay a solid foundation for long-term financial success. With discipline and proactive management, you can significantly improve your credit score in 2025 and secure a brighter financial future.
     `,
-  },
+	},
 ];
