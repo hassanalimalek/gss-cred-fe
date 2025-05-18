@@ -4,7 +4,7 @@ import { stats } from '../data/stats';
 import { faqs } from '../data/faqs';
 import { packages } from '../data/packages';
 
-export const COMPANY_NAME = "Mulligan Credit Repair";
+export const COMPANY_NAME = "Admin Panel";
 export const CONTACT = {
   phone: "1-214-444-9837",
   email: "cred@gznite.com",

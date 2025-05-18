@@ -60,4 +60,9 @@ export const testimonials: Testimonial[] = [
     name: "William Taylor",
     text: "After years of financial struggles, Mulligan helped me remove outdated collections and negotiate with creditors. My score went from 540 to 680 in just 6 months."
   }
+  ,{
+    image:null,
+    name:"Nicole Green",
+    text:"Hey! I'm Nicole Green from St. Anthony, MN. I had $240,000 in debt and in 2 months, my credit went from 600 to over 750 and they erased this debt with the Tier 3 membership. Getting rid of $240,000 of debt was DEFINITELY worth the $3400. Thank you Mulligan Credit Repair"
+  }
 ];

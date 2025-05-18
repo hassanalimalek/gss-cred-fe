@@ -2,11 +2,9 @@
 
 import { Geist, Geist_Mono, PT_Serif } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
-import { useHashNavigation } from '@/hooks/useHashNavigation';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,8 +27,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  useHashNavigation();
-
   return (
     <html
       lang="en"
@@ -38,12 +34,10 @@ export default function RootLayout({
     >
       <body>
         <ErrorBoundary>
-          <Header phone='1-214-444-9837' email='cred@gznite.com'/>
-          <main className="flex-grow">
+          <AuthProvider>
             {children}
-          </main>
-          <Footer />
-          <Toaster />
+            <Toaster />
+          </AuthProvider>
         </ErrorBoundary>
       </body>
     </html>

@@ -3,7 +3,7 @@ import React from "react";
 
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
-  color?: 'yellow' | 'blue' | 'gray';
+  color?: 'yellow' | 'blue' | 'gray' | 'white' | 'primary' | 'accent';
   className?: string;
 }
 
@@ -21,7 +21,10 @@ export const LoadingSpinner = React.memo(({
   const colorClasses = {
     yellow: 'border-yellow-600 border-t-transparent',
     blue: 'border-sky-600 border-t-transparent',
-    gray: 'border-gray-600 border-t-transparent'
+    gray: 'border-gray-600 border-t-transparent',
+    white: 'border-white border-t-transparent',
+    primary: 'border-primary border-t-transparent',
+    accent: 'border-accent border-t-transparent'
   };
 
   return (

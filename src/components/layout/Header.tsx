@@ -19,6 +19,7 @@ const navigationItems = [
   { path: '/how-it-works', label: 'How It Works' },
   { path: '/updates', label: 'Updates' },
   { path: '/contact', label: 'Contact' },
+  { path: '/track', label: 'Track Application' },
 ];
 
 const Header = React.memo(({ phone, email }: HeaderProps) => {
@@ -46,14 +47,14 @@ const Header = React.memo(({ phone, email }: HeaderProps) => {
               <PhoneIcon className="w-5 h-5 mr-2 text-gray-600" />
               <span className="text-gray-600 font-medium text-base">{phone}</span>
             </a>
-            
+
             {/* Email */}
-            <a href={`mailto:${email}`} className="flex items-center hidden sm:flex min-h-[44px] min-w-[44px]">
+            <a href={`mailto:${email}`} className="hidden sm:flex items-center min-h-[44px] min-w-[44px]">
               <EnvelopeIcon className="w-5 h-5 mr-2 text-gray-600" />
               <span className="text-gray-600 font-medium text-base">{email}</span>
             </a>
           </div>
-          
+
           {/* Social media icons */}
           <div className="flex space-x-5">
             <a href="#" aria-label="LinkedIn" className="text-gray-600 hover:text-blue-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
@@ -68,31 +69,31 @@ const Header = React.memo(({ phone, email }: HeaderProps) => {
           </div>
         </div>
       </div>
-      
+
       {/* Main navigation bar */}
       <div className="bg-white py-5 px-2 shadow-sm">
         <div className="w-full md:w-[90%] mx-auto flex justify-between items-center">
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
-              <Image 
-                src="/images/logo.webp" 
-                alt="Mulligan Credit Repair" 
+              <Image
+                src="/images/logo.webp"
+                alt="Mulligan Credit Repair"
                 width={320}
                 height={220}
-                className="h-10 w-auto" 
+                className="h-10 w-auto"
                 priority
               />
             </Link>
           </div>
-          
+
           {/* Desktop Navigation */}
           <nav className="hidden md:flex">
             <ul className="flex space-x-10">
               {navigationItems.map((item) => (
-                <NavigationItem 
+                <NavigationItem
                   key={item.path}
-                  href={item.path} 
+                  href={item.path}
                   isActive={isActive(item.path)}
                 >
                   {item.label}
@@ -100,9 +101,9 @@ const Header = React.memo(({ phone, email }: HeaderProps) => {
               ))}
             </ul>
           </nav>
-          
+
           {/* Mobile menu button */}
-          <button 
+          <button
             className="md:hidden p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 min-h-[44px] min-w-[44px]"
             onClick={toggleMenu}
             aria-expanded={isMenuOpen}
@@ -117,11 +118,11 @@ const Header = React.memo(({ phone, email }: HeaderProps) => {
           </button>
         </div>
       </div>
-      
+
       {/* Mobile Navigation */}
       <AnimatePresence>
         {isMenuOpen && (
-          <motion.div 
+          <motion.div
             id="mobile-menu"
             className="md:hidden bg-white shadow-md"
             initial={{ height: 0, opacity: 0 }}
@@ -132,9 +133,9 @@ const Header = React.memo(({ phone, email }: HeaderProps) => {
             <nav className="px-4 pb-4 overflow-hidden max-h-[calc(100vh-120px)] overflow-y-auto">
               <ul className="space-y-4">
                 {navigationItems.map((item) => (
-                  <NavigationItem 
+                  <NavigationItem
                     key={item.path}
-                    href={item.path} 
+                    href={item.path}
                     isActive={isActive(item.path)}
                     onClick={closeMenu}
                   >

@@ -80,7 +80,7 @@ const CreditCardPreview: React.FC<CreditCardPreviewProps> = ({ cardNumber, expir
   };
 
   const cardType = getCardType();
-  
+
   // Dynamic card background based on card type
   const getCardBackground = () => {
     switch (cardType) {
@@ -153,7 +153,7 @@ const CreditCardPreview: React.FC<CreditCardPreviewProps> = ({ cardNumber, expir
       <div className="absolute inset-0 bg-white opacity-5 pointer-events-none">
         <div className="w-full h-full bg-grid-slate-200/10"></div>
       </div>
-      
+
       {/* Chip reflection */}
       <div className="absolute top-20 left-12 w-6 h-1 bg-white opacity-20 transform rotate-45"></div>
     </div>
@@ -228,8 +228,8 @@ const OnboardingForm = () => {
 
   // Map packages to the format needed for the form
   const packageOptions = packages.map(pkg => ({
-    value: pkg.name === "Tier 1" ? "TIER_1" : 
-           pkg.name === "Tier 2" ? "TIER_2" : 
+    value: pkg.name === "Tier 1" ? "TIER_1" :
+           pkg.name === "Tier 2" ? "TIER_2" :
            pkg.name === "Custom" ? "CUSTOM" : "",
     label: pkg.name,
     price: pkg.price
@@ -303,9 +303,9 @@ const OnboardingForm = () => {
         setMessage("Payment system failed to initialize. Please try again later.");
       }
     };
-    
+
     loadAcceptJs();
-    
+
     // Cleanup function
     return () => {
       const scripts = document.querySelectorAll(`script[src*="Accept.js"]`);
@@ -321,9 +321,9 @@ const OnboardingForm = () => {
       { name: 'NEXT_PUBLIC_AUTHORIZE_CLIENT_KEY', value: process.env.NEXT_PUBLIC_AUTHORIZE_CLIENT_KEY },
       { name: 'NEXT_PUBLIC_ACCEPTJS_URL', value: process.env.NEXT_PUBLIC_ACCEPTJS_URL }
     ];
-    
+
     const missingVars = requiredEnvVars.filter(v => !v.value);
-    
+
     if (missingVars.length > 0) {
       setStatus("error");
       setMessage(`Configuration error. Please contact support. [Missing: ${missingVars.map(v => v.name).join(', ')}]`);
@@ -334,7 +334,7 @@ const OnboardingForm = () => {
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'file') {
       const fileInput = e.target as HTMLInputElement;
       setFormData({
@@ -353,7 +353,7 @@ const OnboardingForm = () => {
     if (files && files.length > 0) {
       const file = files[0];
       const maxSizeInBytes = 10 * 1024 * 1024; // 10MB
-      
+
       // Validate file size
       if (file.size > maxSizeInBytes) {
         setErrors(prev => ({
@@ -362,15 +362,15 @@ const OnboardingForm = () => {
         }));
         return;
       }
-      
+
       // Validate file type
       const validTypes = [
-        'application/pdf', 
-        'image/png', 
-        'image/jpeg', 
+        'application/pdf',
+        'image/png',
+        'image/jpeg',
         'image/jpg'
       ];
-      
+
       if (!validTypes.includes(file.type)) {
         setErrors(prev => ({
           ...prev,
@@ -378,16 +378,16 @@ const OnboardingForm = () => {
         }));
         return;
       }
-      
+
       setFormData((prev) => ({ ...prev, [fieldName]: files }));
-      
+
       // Clear any errors for this field when a valid file is selected
       setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[fieldName];
         return newErrors;
       });
-      
+
       // Reset progress tracking for this field
       setUploadProgress(prev => ({
         ...prev,
@@ -507,23 +507,34 @@ const OnboardingForm = () => {
 
   // Create API instance outside the handler for better memory management
   const fileApiWithProgress = useMemo(() => (baseUrl: string) => {
-    return axios.create({
+    const instance = axios.create({
       baseURL: baseUrl,
       timeout: 120000, // 2 minutes timeout for larger files
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
+
+    // Add response interceptor to handle errors
+    instance.interceptors.response.use(
+      (response) => response, // Return successful responses as-is
+      (error) => {
+        // Just pass through the error - no special handling needed here
+        return Promise.reject(error);
+      }
+    );
+
+    return instance;
   }, []);
 
   // Completely restructured handleSubmit for better error handling and flow
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     // Start with form in loading state
     setStatus("loading");
     setMessage("Processing your application...");
-    
+
     try {
       // STEP 1: Validate form
       const formErrors = validateForm();
@@ -537,24 +548,24 @@ const OnboardingForm = () => {
         }
         throw new Error("Please correct the errors in the form.");
       }
-      
+
       // Clear any previous errors since validation passed
       setErrors({});
-      
+
       // STEP 2: Check API configuration
       const apiBaseUrl = getApiBaseUrl();
       if (!apiBaseUrl) {
         throw new Error("System configuration error. Please try again later or contact support.");
       }
-      
+
       // STEP 3: Verify document uploads are ready
       const utilityBillFile = formData.utilityBill && formData.utilityBill.item(0);
       const driverLicenseFile = formData.driverLicense && formData.driverLicense.item(0);
-      
+
       if (!utilityBillFile || !driverLicenseFile) {
         throw new Error("Required documents are missing. Please upload both utility bill and driver's license.");
       }
-      
+
       // STEP 4: Prepare and validate data
       // Clean phone number
       const cleanedPhone = formData.phone.replace(/\D/g, '');
@@ -562,55 +573,55 @@ const OnboardingForm = () => {
         setErrors(prev => ({...prev, phone: "Phone number must be 10 digits"}));
         throw new Error("Phone number must be 10 digits.");
       }
-      
+
       const formattedPhone = `+1${cleanedPhone}`;
-      
+
       // Clean SSN
       const ssnDigits = formData.ssn.replace(/\D/g, '');
       if (ssnDigits.length !== 9) {
         setErrors(prev => ({...prev, ssn: "SSN must be 9 digits"}));
         throw new Error("SSN must be 9 digits.");
       }
-      
+
       // STEP 5: Verify payment data is ready
       if (!isAcceptReady) {
         throw new Error("Payment processing system is not ready. Please try again.");
       }
-      
+
       if (meta.error) {
         throw new Error(`Payment card error: ${meta.error}`);
       }
-      
+
       // STEP 6: Upload documents
       setMessage("Uploading documents... Please do not close this window.");
       setIsUploading(true);
       setUploadProgress({ utilityBill: 0, driverLicense: 0 });
-      
+
       let utilityBillUrl;
       let driverLicenseUrl;
-      
+
       try {
         // Use the memoized API instance
         const api = fileApiWithProgress(apiBaseUrl);
-        
+
         // Fixing the uploadSingleFile function to handle concurrent uploads with individual progress
         const uploadSingleFile = async (file: File, fieldName: string) => {
           const singleFileFormData = new FormData();
           singleFileFormData.append('files', file);
           singleFileFormData.append('isPublic', 'false');
-          
+
           // Set uploading state for this specific file only
           setFileUploads(prev => ({
             ...prev,
             [fieldName]: {uploading: true, completed: false, error: false}
           }));
-          
+
           // Reset progress for this file before starting
           setUploadProgress(prev => ({
             ...prev,
             [fieldName]: 0
           }));
-          
+
           try {
             const response = await api.post('/media', singleFileFormData, {
               onUploadProgress: (progressEvent) => {
@@ -626,13 +637,13 @@ const OnboardingForm = () => {
                 });
               }
             });
-            
+
             // Set completed state only for this file
             setFileUploads(prev => ({
               ...prev,
               [fieldName]: {uploading: false, completed: true, error: false}
             }));
-            
+
             return response.data;
           } catch (uploadError: any) {
             // Update error state only for this file
@@ -640,7 +651,7 @@ const OnboardingForm = () => {
               ...prev,
               [fieldName]: {uploading: false, completed: false, error: true}
             }));
-            
+
             // Handle specific upload errors
             if (axios.isAxiosError(uploadError)) {
               if (uploadError.code === 'ECONNABORTED') {
@@ -649,63 +660,70 @@ const OnboardingForm = () => {
               if (uploadError.response?.status === 413) {
                 throw new Error(`${fieldName} is too large. Please upload a smaller file (max 10MB).`);
               }
+              if (uploadError.response?.status === 406) {
+                // Extract the actual error message from the backend
+                const errorMessage = uploadError.response.data?.message || 'File size or type not acceptable';
+                throw new Error(`${fieldName}: ${errorMessage}`);
+              }
+              if (uploadError.response?.data?.message) {
+                throw new Error(`${fieldName}: ${uploadError.response.data.message}`);
+              }
             }
-            
+
             throw new Error(`Failed to upload ${fieldName}. ${uploadError.message || 'Please try again.'}`);
           }
         };
-        
+
         // Use Promise.all for parallel uploads but with proper individual progress handling
         setMessage("Uploading documents... Please wait.");
-        
+
         try {
           // Run uploads in parallel for better speed
           const [utilityBillResponse, driverLicenseResponse] = await Promise.all([
             uploadSingleFile(utilityBillFile, 'utilityBill'),
             uploadSingleFile(driverLicenseFile, 'driverLicense')
           ]);
-          
+
           // Validate upload results
           if (!utilityBillResponse.files || utilityBillResponse.files.length === 0) {
             throw new Error("Failed to upload utility bill. Please try again.");
           }
-          
+
           if (!driverLicenseResponse.files || driverLicenseResponse.files.length === 0) {
             throw new Error("Failed to upload driver's license. Please try again.");
           }
-          
+
           // Set the URLs after successful uploads
           utilityBillUrl = utilityBillResponse.files[0]._id;
           driverLicenseUrl = driverLicenseResponse.files[0]._id;
-          
+
         } catch (error) {
-          // Handle document upload errors
-          let uploadErrorMessage = "An unexpected error occurred during document upload. Please try again later.";
-          
-          if (error instanceof Error) {
-            uploadErrorMessage = `Document upload error: ${error.message}`;
-          }
-          
-          throw new Error(uploadErrorMessage);
+          // Just rethrow the error - no need to wrap it again
+          throw error;
         }
-        
+
       } catch (error) {
         // Handle document upload errors
         let uploadErrorMessage = "An unexpected error occurred during document upload. Please try again later.";
-        
+
         if (error instanceof Error) {
-          uploadErrorMessage = `Document upload error: ${error.message}`;
+          // Don't wrap the error message if it already contains "upload" to avoid duplication
+          if (error.message.includes('upload') || error.message.includes('File')) {
+            throw error; // Just pass through the original error
+          } else {
+            uploadErrorMessage = `Document upload error: ${error.message}`;
+          }
         }
-        
+
         throw new Error(uploadErrorMessage);
       }
-      
+
       // STEP 7: Process payment
       setMessage("Processing payment... Please do not close this window.");
-      
+
       let dataValue;
       let dataDescriptor;
-      
+
       try {
         const secureData = {
           authData: {
@@ -719,7 +737,7 @@ const OnboardingForm = () => {
             cardCode: cvc,
           },
         };
-        
+
         // // Get payment token
         const acceptResponse: any = await new Promise((resolve, reject) => {
           if (!window.Accept?.dispatchData) {
@@ -733,31 +751,31 @@ const OnboardingForm = () => {
             }
           });
         });
-        
+
         dataValue = acceptResponse.opaqueData.dataValue;
         dataDescriptor = acceptResponse.opaqueData.dataDescriptor;
-        
+
         if (!dataValue || !dataDescriptor) {
           throw new Error("Payment processing failed. Please check your card information.");
         }
       } catch (error) {
         // Only handle Accept.js errors here
         let errorMessage = "Payment processing failed. Please try again.";
-        
+
         if (error instanceof Error) {
           errorMessage = `Payment error: ${error.message}`;
         }
-        
+
         throw new Error(errorMessage);
       }
-      
+
       // STEP 8: Submit the credit repair request
       setMessage("Finalizing your application...");
-      
+
       try {
         // Get encryption keys
         const { publicKey, sessionId } = await getEncryptionKeys();
-        
+
         // Prepare data for submission
         const submissionData = {
           fullName: formData.name,
@@ -775,29 +793,28 @@ const OnboardingForm = () => {
           dataDescriptor: dataDescriptor,
           requestRecordExpunction: formData.requestRecordExpunction
         };
-        
+
         // Encrypt the submission data
         const encryptedPayload = encryptFormData(submissionData, publicKey, sessionId);
-        console.log("encryptedPayload", encryptedPayload);
         // Submit the encrypted payload
         const response = await submitCreditRepairRequest(encryptedPayload);
         logDebug("Submission successful, response:", "test");
-        
+
         // Success - show success message
         setStatus("success");
         setMessage("Application submitted successfully! We'll get back to you soon.");
         showSuccessToast("Your credit repair application has been submitted successfully! We'll be in touch soon.");
-        
+
         // Optional: Reset form after success
         setTimeout(() => {
           resetForm();
         }, 3000);
-        
+
       } catch (error) {
         // Handle API submission errors - critically important for payment errors!
         let submitErrorMessage = "An error occurred during submission.";
         logDebug("Submission or payment error caught:", error);
-        
+
         // Special handling for payment errors (HTTP 402)
         if (axios.isAxiosError(error) && error.response) {
           logDebug("API error response:", {
@@ -805,13 +822,13 @@ const OnboardingForm = () => {
             statusText: error.response.statusText,
             data: JSON.stringify(error.response.data)
           });
-          
+
           if (error.response.status === 402) {
             try {
               const paymentError = error.response.data as PaymentError;
               logDebug("Payment error details:", paymentError);
               const details = paymentError?.details || { message: "Unknown payment error" };
-              
+
               // Map response codes to user-friendly messages - EXPANDED
               const errorMessages: Record<string, string> = {
                 '2': 'Your card was declined.',
@@ -827,7 +844,7 @@ const OnboardingForm = () => {
                 '200': 'This transaction has been declined.',
                 '300': 'The transaction was rejected by the payment processor.'
               };
-              
+
               // Add CVV response code messages
               const cvvMessages: Record<string, string> = {
                 'N': 'The CVV code you entered doesn\'t match your card.',
@@ -835,7 +852,7 @@ const OnboardingForm = () => {
                 'S': 'Your card requires a CVV code but none was provided.',
                 'U': 'Your card issuer doesn\'t support CVV verification.'
               };
-              
+
               // Add retry suggestions based on error type
               const getRetrySuggestion = (errorCode: string) => {
                 switch(errorCode) {
@@ -858,32 +875,32 @@ const OnboardingForm = () => {
                     return "Please try again or use a different payment method.";
                 }
               };
-              
+
               // Try to get the most specific error message
               if (details.raw?.transactionResponse?.errors && details.raw.transactionResponse.errors.length > 0) {
                 const transactionError = details.raw.transactionResponse.errors[0];
                 submitErrorMessage = errorMessages[transactionError.errorCode] || transactionError.errorText;
-                
+
                 // Add retry suggestion
                 if (errorMessages[transactionError.errorCode]) {
                   submitErrorMessage += " " + getRetrySuggestion(transactionError.errorCode);
                 }
-                
+
                 logDebug("Using transaction error code:", transactionError.errorCode);
-              } 
+              }
               else if (details.responseCode && errorMessages[details.responseCode]) {
                 submitErrorMessage = errorMessages[details.responseCode];
-                
+
                 // Add retry suggestion
                 submitErrorMessage += " " + getRetrySuggestion(details.responseCode);
-                
+
                 logDebug("Using response code:", details.responseCode);
-              } 
+              }
               else {
                 submitErrorMessage = details.message || paymentError.error || "Payment failed. Please try again.";
                 logDebug("Using fallback error message");
               }
-              
+
               // Check for CVV-specific errors with null check
               if (details.raw?.transactionResponse?.cvvResultCode) {
                 const cvvCode = details.raw.transactionResponse.cvvResultCode;
@@ -897,9 +914,9 @@ const OnboardingForm = () => {
                   logDebug("Using CVV error code:", cvvCode);
                 }
               }
-              
+
               // Add card info if available with additional null checks
-              if (details.raw?.transactionResponse?.accountType && 
+              if (details.raw?.transactionResponse?.accountType &&
                   details.raw.transactionResponse?.accountNumber) {
                 submitErrorMessage += ` (${details.raw.transactionResponse.accountType} ending in ${
                   details.raw.transactionResponse.accountNumber.replace('XXXX', '')
@@ -932,17 +949,17 @@ const OnboardingForm = () => {
             submitErrorMessage = error.message;
           }
         }
-        
+
         throw new Error(submitErrorMessage);
       }
-      
+
     } catch (error) {
       // MAIN ERROR HANDLER - All errors bubble up to here
       setIsUploading(false);
       setStatus("error");
-      
+
       let finalErrorMessage = "An unexpected error occurred. Please try again later.";
-      
+
       if (error instanceof Error) {
         finalErrorMessage = error.message;
         // Log error details safely
@@ -953,10 +970,10 @@ const OnboardingForm = () => {
         });
       } else {
         // Handle non-Error objects
-        logError("Form submission error (non-Error object):", 
+        logError("Form submission error (non-Error object):",
           typeof error === 'object' ? JSON.stringify(error) : error);
       }
-      
+
       setMessage(finalErrorMessage);
       showErrorToast(finalErrorMessage);
     } finally {
@@ -1199,7 +1216,7 @@ const OnboardingForm = () => {
               required
             />
           </div>
-          
+
           {/* Fourth Row: SSN */}
           <div className="md:col-span-2">
             <label className="block mb-2 font-medium text-sky-950">Social Security Number *</label>
@@ -1358,8 +1375,8 @@ const OnboardingForm = () => {
             </p>
             <p className="mt-2">
               Read the{" "}
-              <a 
-                href="/docs/customer-disclosure.pdf" 
+              <a
+                href="/docs/customer-disclosure.pdf"
                 className="text-[#D09C01] hover:underline"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -1386,7 +1403,7 @@ const OnboardingForm = () => {
             </div>
           </div>
         )}
-        
+
         {/* Error list - In its own div below the message */}
         {Object.keys(errors).length > 0 && (
           <div className="md:col-span-2">
