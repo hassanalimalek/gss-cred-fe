@@ -60,6 +60,34 @@ export interface CreditRepairRequest {
   }>;
 }
 
+export interface Customer {
+  _id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  address: string;
+  socialSecurityNumber: string;
+  dateOfBirth: string;
+  // Keep dateofBirth for backward compatibility
+  dateofBirth?: string;
+  referralCode?: string;
+  referredBy?: string;
+  referrals?: string[];
+  createdAt: string;
+  updatedAt: string;
+  creditRepairRequests: Array<{
+    _id: string;
+    packagePrice: number;
+    requestRecordExpunction: boolean;
+    transactionId: string;
+    trackingId: string;
+    currentStatus: number;
+    statusText: string;
+    createdAt: string;
+    appliedReferralCode?: string;
+  }>;
+}
+
 export interface StatusUpdateRequest {
   newStatus: number;
   userNotes?: string;
@@ -70,6 +98,14 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface CreditRepairStatistics {
+  total: number;
+  completed: number;
+  inProgress: number;
+  pending: number;
+  cancelled: number;
 }
 
 /**
@@ -174,5 +210,96 @@ export const updateCreditRepairStatus = async (
     return response.data;
   } catch (error) {
     return handleApiError(error, 'Failed to update status');
+  }
+};
+
+/**
+ * Get all customers with pagination, sorting, and search
+ * @param page Page number (default: 1)
+ * @param limit Items per page (default: 10)
+ * @param sortBy Field to sort by (default: 'createdAt')
+ * @param sortOrder Sort order ('asc' or 'desc', default: 'desc')
+ * @param search Search query for name, email, or phone (optional)
+ * @returns Promise with paginated response of customers
+ */
+export const getCustomers = async (
+  page = 1,
+  limit = 10,
+  sortBy = 'createdAt',
+  sortOrder = 'desc',
+  search?: string
+): Promise<PaginatedResponse<Customer>> => {
+  try {
+    const params: Record<string, string | number> = {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    };
+
+    if (search && search.trim() !== '') {
+      params.search = search.trim();
+    }
+
+    const response = await api.get('/admin/customers', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+
+    // Check if it's an authentication error
+    if ((error as AxiosError).response?.status === 401) {
+      // Don't throw here, just return empty data
+      return {
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10
+      };
+    }
+
+    // Use our centralized error handling for other errors
+    return handleApiError(error, 'Failed to fetch customers');
+  }
+};
+
+/**
+ * Get a single customer by ID
+ * @param id Customer ID
+ * @returns Promise with customer details
+ */
+export const getCustomerById = async (id: string): Promise<Customer> => {
+  try {
+    const response = await api.get(`/admin/customers/${id}`);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error, 'Failed to fetch customer details');
+  }
+};
+
+/**
+ * Get credit repair request statistics
+ * @returns Promise with statistics about credit repair requests
+ */
+export const getCreditRepairStatistics = async (): Promise<CreditRepairStatistics> => {
+  try {
+    const response = await api.get('/admin/credit-repair-requests/statistics');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching credit repair statistics:', error);
+
+    // Check if it's an authentication error
+    if ((error as AxiosError).response?.status === 401) {
+      // Return default stats
+      return {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        pending: 0,
+        cancelled: 0
+      };
+    }
+
+    // Use our centralized error handling for other errors
+    return handleApiError(error, 'Failed to fetch credit repair statistics');
   }
 };
