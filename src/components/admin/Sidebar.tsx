@@ -2,17 +2,14 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HomeIcon,
   ClipboardDocumentListIcon,
   UsersIcon,
-  Cog6ToothIcon,
-  ChartBarIcon
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
-import { COMPANY_NAME } from '@/constants';
 
 interface SidebarLinkProps {
   href: string;
@@ -65,24 +62,16 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen }) => {
       icon: <ClipboardDocumentListIcon className="h-5 w-5" />,
       text: 'Credit Repair Requests'
     },
-    // Commented out as requested
-    /*
     {
       href: '/admin/customers',
       icon: <UsersIcon className="h-5 w-5" />,
       text: 'Customers'
     },
     {
-      href: '/admin/analytics',
-      icon: <ChartBarIcon className="h-5 w-5" />,
-      text: 'Analytics'
-    },
-    {
-      href: '/admin/settings',
-      icon: <Cog6ToothIcon className="h-5 w-5" />,
-      text: 'Settings'
-    },
-    */
+      href: '/admin/referrals',
+      icon: <UserGroupIcon className="h-5 w-5" />,
+      text: 'Referrals'
+    }
   ];
 
   return (

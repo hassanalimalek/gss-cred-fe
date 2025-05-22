@@ -56,8 +56,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ toggleSidebar }) => {
           <Image
             src="/images/logo.webp"
             alt="Mulligan Credit Repair"
-            width={120}
-            height={30}
+            width={260}
+            height={90}
             className="h-8 w-auto ml-4"
             priority
           />

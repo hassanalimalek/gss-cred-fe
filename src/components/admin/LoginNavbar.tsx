@@ -10,12 +10,12 @@ export const LoginNavbar: React.FC = () => {
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-center md:justify-start">
           <Link href="/" className="flex items-center">
-            <Image 
-              src="/images/logo.webp" 
-              alt="Mulligan Credit Repair" 
+            <Image
+              src="/images/logo.webp"
+              alt="Mulligan Credit Repair"
               width={320}
               height={220}
-              className="h-10 w-auto" 
+              className="h-10 w-auto"
               priority
             />
           </Link>
