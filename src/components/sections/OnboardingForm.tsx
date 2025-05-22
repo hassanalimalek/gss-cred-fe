@@ -2,15 +2,16 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { PaymentInputsContainer, usePaymentInputs } from "react-payment-inputs";
-import { submitCreditRepairRequest, getEncryptionKeys } from "../../api";
+import { submitCreditRepairRequest, getEncryptionKeys, validateReferralCode } from "../../api";
 import { showSuccessToast, showErrorToast } from "../../utils/toast";
 import axios from 'axios';
 import { encryptFormData } from '../../utils/encryption';
-import { LoadingSpinner } from "../common/LoadingSpinner";
 import { packages } from "../../data/packages";
 
-// Environment-aware logging
+// Structured logging with production-ready error handling
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Log debug messages (only in development)
 const logDebug = (message: string, data?: any) => {
   if (!isProduction) {
     if (data) {
@@ -19,16 +20,19 @@ const logDebug = (message: string, data?: any) => {
       console.log(message);
     }
   }
+  // In production, this function does nothing
+  // Add proper logging service integration here if needed
 };
 
+// Log errors (in both development and production)
 const logError = (message: string, error?: any) => {
   if (!isProduction) {
     console.error(message, error);
+  } else {
+    // In production, we should send this to a proper error tracking service
+    // This is a placeholder for proper error tracking implementation
+    console.error(message);
   }
-  // In production, you might want to send this to an error tracking service
-  // if (isProduction && typeof window !== 'undefined' && window.errorTracker) {
-  //   window.errorTracker.captureError(error, { message });
-  // }
 };
 
 // Extend Window interface to include Accept.js
@@ -259,6 +263,8 @@ const OnboardingForm = () => {
     utilityBill: {uploading: false, completed: false},
     driverLicense: {uploading: false, completed: false}
   });
+  const [referralCodeStatus, setReferralCodeStatus] = useState<"idle" | "validating" | "valid" | "invalid">("idle");
+  const [referrerName, setReferrerName] = useState<string>("");
 
   // Payment card state
   const [cardNumber, setCardNumber] = useState("");
@@ -346,8 +352,80 @@ const OnboardingForm = () => {
         ...formData,
         [name]: value,
       });
+
+      // If referral code field is changed
+      if (name === 'referralCode') {
+        if (value.trim()) {
+          // If there's a value, validate it after a short delay
+          handleReferralCodeChange(value);
+        } else {
+          // If field is cleared, reset all referral code related states
+          setReferralCodeStatus('idle');
+          setReferrerName('');
+          // Make sure to clear any errors related to referral code
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors.referralCode;
+            return newErrors;
+          });
+        }
+      }
     }
   };
+
+  // Validate referral code with debounce
+  const handleReferralCodeChange = useMemo(() => {
+    const validateCode = async (code: string) => {
+      if (!code.trim()) {
+        setReferralCodeStatus('idle');
+        setReferrerName('');
+        // Clear any referral code errors
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.referralCode;
+          return newErrors;
+        });
+        return;
+      }
+
+      try {
+        setReferralCodeStatus('validating');
+        const result = await validateReferralCode(code);
+
+        if (result.valid) {
+          setReferralCodeStatus('valid');
+          setReferrerName(result.referrer?.fullName || '');
+          // Clear any referral code errors
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors.referralCode;
+            return newErrors;
+          });
+        } else {
+          setReferralCodeStatus('invalid');
+          setReferrerName('');
+          setErrors(prev => ({
+            ...prev,
+            referralCode: 'Invalid referral code'
+          }));
+        }
+      } catch (error) {
+        setReferralCodeStatus('invalid');
+        setReferrerName('');
+        setErrors(prev => ({
+          ...prev,
+          referralCode: 'Error validating referral code'
+        }));
+      }
+    };
+
+    // Debounce function to avoid too many API calls
+    let debounceTimer: NodeJS.Timeout;
+    return (code: string) => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => validateCode(code), 500);
+    };
+  }, []);
 
   const handleFileSelect = (fieldName: string) => (files: FileList | null) => {
     if (files && files.length > 0) {
@@ -503,6 +581,9 @@ const OnboardingForm = () => {
       utilityBill: {uploading: false, completed: false},
       driverLicense: {uploading: false, completed: false}
     });
+    // Reset referral code related states
+    setReferralCodeStatus("idle");
+    setReferrerName("");
   };
 
   // Create API instance outside the handler for better memory management
@@ -782,9 +863,10 @@ const OnboardingForm = () => {
           email: formData.email,
           phoneNumber: formattedPhone,
           referralCode: formData.referralCode || undefined,
+          appliedReferralCode: referralCodeStatus === 'valid' ? formData.referralCode : undefined,
           address: formData.address,
           socialSecurityNumber: ssnDigits,
-          dateofBirth: formData.dateOfBirth,
+          dateOfBirth: formData.dateOfBirth,
           utilityBill: utilityBillUrl,
           driverLicense: driverLicenseUrl,
           packageType: formData.package,
@@ -793,17 +875,20 @@ const OnboardingForm = () => {
           dataDescriptor: dataDescriptor,
           requestRecordExpunction: formData.requestRecordExpunction
         };
-
         // Encrypt the submission data
         const encryptedPayload = encryptFormData(submissionData, publicKey, sessionId);
         // Submit the encrypted payload
-        const response = await submitCreditRepairRequest(encryptedPayload);
-        logDebug("Submission successful, response:", "test");
+        await submitCreditRepairRequest(encryptedPayload);
+        logDebug("Submission successful");
 
         // Success - show success message
         setStatus("success");
         setMessage("Application submitted successfully! We'll get back to you soon.");
         showSuccessToast("Your credit repair application has been submitted successfully! We'll be in touch soon.");
+
+        // Immediately reset referral code related states to prevent "Referred by" text from showing
+        setReferralCodeStatus("idle");
+        setReferrerName("");
 
         // Optional: Reset form after success
         setTimeout(() => {
@@ -987,7 +1072,7 @@ const OnboardingForm = () => {
     }
   };
 
-  // Helper: Render a drag-and-drop area or the selected file with remove button
+  // Helper: Render a more compact drag-and-drop area or the selected file with remove button
   const renderFileUpload = (fieldName: string, label: string, required: boolean = false) => {
     const fileData = formData[fieldName] as FileList | null;
     const isFileSelected = fileData && fileData.length > 0;
@@ -1003,10 +1088,10 @@ const OnboardingForm = () => {
           {label} {required && "*"}
         </label>
 
-        {/* If NO file is selected, show drag-and-drop */}
+        {/* If NO file is selected, show compact drag-and-drop */}
         {!isFileSelected && (
           <div
-            className={`w-full px-4 py-8 border-2 border-dashed rounded-lg hover:border-blue-500 transition-colors cursor-pointer flex flex-col items-center justify-center bg-gray-50 ${error ? 'border-red-500' : 'border-gray-300'}`}
+            className={`w-full px-3 py-3 border-2 border-dashed rounded-lg hover:border-blue-500 transition-colors cursor-pointer flex items-center bg-gray-50 ${error ? 'border-red-500' : 'border-gray-300'}`}
             onClick={() => document.getElementById(inputId)?.click()}
             onDragOver={(e) => {
               e.preventDefault();
@@ -1024,7 +1109,7 @@ const OnboardingForm = () => {
             }}
           >
             <svg
-              className={`w-8 h-8 mb-4 ${error ? 'text-red-500' : 'text-gray-500'}`}
+              className={`w-6 h-6 mr-3 flex-shrink-0 ${error ? 'text-red-500' : 'text-gray-500'}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1037,13 +1122,14 @@ const OnboardingForm = () => {
                   a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className={`mb-2 text-sm ${error ? 'text-red-500' : 'text-gray-500'}`}>
-              Click to upload or drag and drop
-            </p>
-            <p className={`text-xs ${error ? 'text-red-500' : 'text-gray-500'}`}>
-              PDF, PNG, JPG or JPEG (MAX. 10MB)
-            </p>
-            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+            <div className="flex-1">
+              <p className={`text-sm ${error ? 'text-red-500' : 'text-gray-700'}`}>
+                Click to upload or drag and drop
+              </p>
+              <p className={`text-xs ${error ? 'text-red-500' : 'text-gray-500'}`}>
+                PDF, PNG, JPG or JPEG (MAX. 10MB)
+              </p>
+            </div>
           </div>
         )}
 
@@ -1056,11 +1142,16 @@ const OnboardingForm = () => {
           aria-invalid={error ? 'true' : 'false'}
         />
 
-        {/* If file IS selected, show file info */}
+        {/* If file IS selected, show compact file info */}
         {isFileSelected && fileData[0] && (
-          <div className={`p-4 border rounded-lg ${error ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+          <div className={`p-3 border rounded-lg ${error ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-black truncate">{fileData[0].name}</span>
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <span className="text-sm font-medium text-black truncate max-w-[180px]">{fileData[0].name}</span>
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -1078,9 +1169,11 @@ const OnboardingForm = () => {
                     [fieldName]: {uploading: false, completed: false}
                   }));
                 }}
-                className="text-red-500 hover:text-red-700"
+                className="text-red-500 hover:text-red-700 ml-2"
               >
-                Remove
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path>
+                </svg>
               </button>
             </div>
             {showProgress && (
@@ -1089,343 +1182,462 @@ const OnboardingForm = () => {
                   <span className="text-xs font-medium text-blue-700">Uploading...</span>
                   <span className="text-xs font-medium text-blue-700">{progress}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div className="w-full bg-gray-200 rounded-full h-1.5">
                   <div
-                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                    className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
               </div>
             )}
             {fileUploadState?.completed && (
-              <div className="mt-2 flex items-center text-green-600">
-                <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <div className="mt-1 flex items-center text-green-600">
+                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
                 </svg>
                 <span className="text-xs">Upload complete</span>
               </div>
             )}
-            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
           </div>
         )}
+        {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
       </div>
     );
   };
 
   return (
     <section id="onboarding" className="py-24 bg-white">
-      <div className="container px-5 mx-auto max-w-2xl">
-        <div className="mb-8 text-center">
-          {/* 1) Change heading to "Get Started Now" with font-['PT_Serif'] */}
+      <div className="container px-5 mx-auto max-w-5xl">
+        <div className="mb-10 text-center">
           <h2 className="text-4xl font-bold text-[#0A142F] sm:text-5xl font-['PT_Serif']">
             Get Started Now
           </h2>
-
-          {/* 2) Change paragraph below heading */}
-          <p className="mx-auto mt-2 text-lg text-[#525A6D] max-w-xl">
+          <p className="mx-auto mt-3 text-lg text-[#525A6D] max-w-xl">
             Fill out the form below to provide us with the necessary information
             to get started. Our team will review your details and reach out to
-            guide you through the next steps, including payment processing.
+            guide you through the next steps.
           </p>
         </div>
 
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Main form container with two columns on desktop */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left Column - Personal Information */}
+            <div className="space-y-6">
+              {/* Personal Information Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#D09C01] mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                  <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
+                </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
-        >
-          {/* First Row: Name and Phone */}
-          <div>
-            <label className="block mb-2 font-medium text-sky-950">
-              Your Name *
-            </label>
-            <input
-              name="name"
-              type="text"
-              value={formData.name}
-              onChange={handleInputChange}
-              placeholder="John Doe"
-              className="w-full px-4 py-2 border border-gray-300 rounded transition-colors
-                focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                text-gray-900"
-              required
-            />
-          </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Name */}
+                  <div>
+                    <label className="block mb-2 font-medium text-sky-950">
+                      Your Name *
+                    </label>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="John Doe"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg transition-colors
+                        focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                        text-gray-900"
+                      required
+                    />
+                    {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+                  </div>
 
-          <div>
-            <label className="block mb-2 font-medium text-sky-950">Phone *</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <span className="text-gray-500">+1</span>
-              </div>
-              <input
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => {
-                  // Remove any non-digit characters and limit to 10 digits
-                  const cleaned = e.target.value.replace(/[^\d]/g, '').substring(0, 10);
-                  handleInputChange({
-                    ...e,
-                    target: {
-                      ...e.target,
-                      name: 'phone',
-                      value: cleaned
-                    }
-                  });
-                }}
-                placeholder="8143512239"
-                className="w-full pl-10 px-4 py-2 border border-gray-300 rounded transition-colors
-                  focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                  text-gray-900"
-                maxLength={10}
-                required
-              />
-            </div>
-            <p className="mt-1 text-xs text-gray-500">Format: +1 followed by 10 digits</p>
-          </div>
-
-          {/* Second Row: Full-width Email */}
-          <div className="md:col-span-2">
-            <label className="block mb-2 font-medium text-sky-950">Email *</label>
-            <input
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              placeholder="john@doe.com"
-              className="w-full px-4 py-2 border border-gray-300 rounded transition-colors
-                focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                text-gray-900"
-              required
-            />
-          </div>
-
-          {/* Third Row: Address */}
-          <div className="md:col-span-2">
-            <label className="block mb-2 font-medium text-sky-950">Address *</label>
-            <input
-              name="address"
-              type="text"
-              value={formData.address}
-              onChange={handleInputChange}
-              placeholder="1234 Main St, City, State, ZIP"
-              className="w-full px-4 py-2 border border-gray-300 rounded transition-colors
-                focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                text-gray-900"
-              required
-            />
-          </div>
-
-          {/* Fourth Row: SSN */}
-          <div className="md:col-span-2">
-            <label className="block mb-2 font-medium text-sky-950">Social Security Number *</label>
-            <input
-              name="ssn"
-              type="text"
-              value={formData.ssn}
-              onChange={handleInputChange}
-              placeholder="123-45-6789"
-              className="w-full px-4 py-2 border border-gray-300 rounded transition-colors
-                focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                text-gray-900"
-              required
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block mb-2 font-medium text-sky-950">Date of Birth *</label>
-            <input
-              name="dateOfBirth"
-              type="date"
-              value={formData.dateOfBirth}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded transition-colors
-                focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
-                text-gray-900"
-              required
-            />
-          </div>
-
-          {/* File Inputs (ONE container) */}
-          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Utility Bill */}
-            {renderFileUpload("utilityBill", "Utility Bill", true)}
-
-            {/* Driver License */}
-            {renderFileUpload("driverLicense", "Driver License", true)}
-          </div>
-
-          {/* Package Selection */}
-          <div className="md:col-span-2">
-            <label className="block mb-2 font-medium text-sky-950">
-              Select The Package *
-            </label>
-            <select
-              name="package"
-              value={formData.package}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded text-gray-900"
-              required
-            >
-              <option value="">Choose a package</option>
-              {packageOptions.map((pkg) => (
-                <option key={pkg.value} value={pkg.value}>
-                  {pkg.label} - ${pkg.price}
-                </option>
-              ))}
-            </select>
-          </div>
-
-
-
-          {/* Credit Card Fields */}
-          <div className="md:col-span-2">
-            <label className="block mb-2 font-medium text-sky-950">
-              Credit / Debit Card *
-            </label>
-            <PaymentInputsContainer>
-              {({ wrapperProps }: { wrapperProps: React.HTMLAttributes<HTMLDivElement> }) => (
-                <div {...wrapperProps} className="grid grid-cols-12 gap-4">
-                  <div className="col-span-1 flex items-center justify-center">
-                    <svg viewBox="0 0 24 24" width="24" height="24">
-                      <path
-                        fill="currentColor"
-                        d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"
+                  {/* Phone */}
+                  <div>
+                    <label className="block mb-2 font-medium text-sky-950">Phone *</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <span className="text-gray-500">+1</span>
+                      </div>
+                      <input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => {
+                          // Remove any non-digit characters and limit to 10 digits
+                          const cleaned = e.target.value.replace(/[^\d]/g, '').substring(0, 10);
+                          handleInputChange({
+                            ...e,
+                            target: {
+                              ...e.target,
+                              name: 'phone',
+                              value: cleaned
+                            }
+                          });
+                        }}
+                        placeholder="8143512239"
+                        className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg transition-colors
+                          focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                          text-gray-900"
+                        maxLength={10}
+                        required
                       />
-                    </svg>
-                  </div>
-                  <div className="col-span-11 md:col-span-5">
-                    <InputWrapper
-                      {...getCardNumberProps({
-                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => setCardNumber(e.target.value),
-                      })}
-                      value={cardNumber}
-                      className="w-full px-4 py-2 border border-gray-300 rounded text-gray-800
-                        transition-colors focus:outline-none focus:border-blue-500
-                        focus:ring-1 focus:ring-blue-500"
-                      placeholder="Card Number"
-                    />
-                  </div>
-                  <div className="col-span-6 md:col-span-3">
-                    <InputWrapper
-                      {...getExpiryDateProps({
-                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => setExpiryDate(e.target.value),
-                      })}
-                      value={expiryDate}
-                      className="w-full px-4 py-2 border border-gray-300 rounded text-gray-800
-                        transition-colors focus:outline-none focus:border-blue-500
-                        focus:ring-1 focus:ring-blue-500"
-                      placeholder="MM/YY"
-                    />
-                  </div>
-                  <div className="col-span-6 md:col-span-3">
-                    <InputWrapper
-                      {...getCVCProps({
-                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => setCvc(e.target.value),
-                      })}
-                      value={cvc}
-                      className="w-full px-4 py-2 border border-gray-300 rounded text-gray-800
-                        transition-colors focus:outline-none focus:border-blue-500
-                        focus:ring-1 focus:ring-blue-500"
-                      placeholder="CVC"
-                    />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">Format: +1 followed by 10 digits</p>
+                    {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
                   </div>
                 </div>
-              )}
-            </PaymentInputsContainer>
-            {/* Only show meta.error if it's related to formatting or validation */}
-            {meta.error && (
-              <div className="text-red-500 text-sm mt-1">{meta.error}</div>
-            )}
+
+                {/* Email */}
+                <div className="mt-4">
+                  <label className="block mb-2 font-medium text-sky-950">Email *</label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="john@example.com"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg transition-colors
+                      focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                      text-gray-900"
+                    required
+                  />
+                  {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+                </div>
+
+                {/* Address */}
+                <div className="mt-4">
+                  <label className="block mb-2 font-medium text-sky-950">Address *</label>
+                  <input
+                    id="address"
+                    name="address"
+                    type="text"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    placeholder="1234 Main St, City, State, ZIP"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg transition-colors
+                      focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                      text-gray-900"
+                    required
+                  />
+                  {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address}</p>}
+                </div>
+
+                {/* Date of Birth and SSN */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block mb-2 font-medium text-sky-950">Date of Birth *</label>
+                    <input
+                      id="dateOfBirth"
+                      name="dateOfBirth"
+                      type="date"
+                      value={formData.dateOfBirth}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg transition-colors
+                        focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                        text-gray-900"
+                      required
+                    />
+                    {errors.dateOfBirth && <p className="mt-1 text-sm text-red-500">{errors.dateOfBirth}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 font-medium text-sky-950">Social Security Number *</label>
+                    <input
+                      id="ssn"
+                      name="ssn"
+                      type="text"
+                      value={formData.ssn}
+                      onChange={handleInputChange}
+                      placeholder="123-45-6789"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg transition-colors
+                        focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                        text-gray-900"
+                      required
+                    />
+                    {errors.ssn && <p className="mt-1 text-sm text-red-500">{errors.ssn}</p>}
+                  </div>
+                </div>
+              </div>
+                {/* Document Upload Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#D09C01] mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                  </svg>
+                  <h3 className="text-lg font-semibold text-gray-900">Required Documents</h3>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Utility Bill */}
+                  {renderFileUpload("utilityBill", "Utility Bill", true)}
+
+                  {/* Driver License */}
+                  {renderFileUpload("driverLicense", "Driver License", true)}
+                </div>
+              </div>
+
+
+            </div>
+
+            {/* Right Column - Documents and Payment */}
+            <div className="space-y-6">
+
+                  {/* Package Selection Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#D09C01] mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                    <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <h3 className="text-lg font-semibold text-gray-900">Select Package</h3>
+                </div>
+
+                <div>
+                  <label className="block mb-2 font-medium text-sky-950">
+                    Choose Your Package *
+                  </label>
+                  <select
+                    id="package"
+                    name="package"
+                    value={formData.package}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Select a package</option>
+                    {packageOptions.map((pkg) => (
+                      <option key={pkg.value} value={pkg.value}>
+                        {pkg.label} - ${pkg.price}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.package && <p className="mt-1 text-sm text-red-500">{errors.package}</p>}
+                </div>
+
+                {/* Record Expunction Checkbox */}
+                <div className="mt-4">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.requestRecordExpunction}
+                      onChange={(e) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          requestRecordExpunction: e.target.checked
+                        }));
+                      }}
+                      className="form-checkbox h-5 w-5 text-[#D09C01] rounded border-gray-300 focus:ring-[#D09C01]"
+                    />
+                    <span className="text-neutral-800 font-medium">Request Record Expunctions</span>
+                  </label>
+                </div>
+              </div>
+              {/* Payment Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#D09C01] mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                    <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
+                  </svg>
+                  <h3 className="text-lg font-semibold text-gray-900">Payment Information</h3>
+                </div>
+
+                {/* Credit Card Preview - More prominent on desktop */}
+                <div className="mb-6 flex justify-center">
+                  <CreditCardPreview
+                    cardNumber={cardNumber}
+                    expiryDate={expiryDate}
+                    cvc={cvc}
+                  />
+                </div>
+
+                {/* Credit Card Fields */}
+                <div>
+                  <label className="block mb-2 font-medium text-sky-950">
+                    Credit / Debit Card *
+                  </label>
+                  <PaymentInputsContainer>
+                    {({ wrapperProps }: { wrapperProps: React.HTMLAttributes<HTMLDivElement> }) => (
+                      <div {...wrapperProps} className="grid grid-cols-12 gap-4">
+                        <div className="col-span-1 flex items-center justify-center">
+                          <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path
+                              fill="currentColor"
+                              d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"
+                            />
+                          </svg>
+                        </div>
+                        <div className="col-span-11 md:col-span-5">
+                          <InputWrapper
+                            {...getCardNumberProps({
+                              onChange: (e: React.ChangeEvent<HTMLInputElement>) => setCardNumber(e.target.value),
+                            })}
+                            value={cardNumber}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800
+                              transition-colors focus:outline-none focus:border-blue-500
+                              focus:ring-1 focus:ring-blue-500"
+                            placeholder="Card Number"
+                          />
+                        </div>
+                        <div className="col-span-6 md:col-span-3">
+                          <InputWrapper
+                            {...getExpiryDateProps({
+                              onChange: (e: React.ChangeEvent<HTMLInputElement>) => setExpiryDate(e.target.value),
+                            })}
+                            value={expiryDate}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800
+                              transition-colors focus:outline-none focus:border-blue-500
+                              focus:ring-1 focus:ring-blue-500"
+                            placeholder="MM/YY"
+                          />
+                        </div>
+                        <div className="col-span-6 md:col-span-3">
+                          <InputWrapper
+                            {...getCVCProps({
+                              onChange: (e: React.ChangeEvent<HTMLInputElement>) => setCvc(e.target.value),
+                            })}
+                            value={cvc}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-800
+                              transition-colors focus:outline-none focus:border-blue-500
+                              focus:ring-1 focus:ring-blue-500"
+                            placeholder="CVC"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </PaymentInputsContainer>
+                  {/* Only show meta.error if it's related to formatting or validation */}
+                  {meta.error && (
+                    <div className="text-red-500 text-sm mt-1">{meta.error}</div>
+                  )}
+                </div>
+
+                {/* Referral Code Field */}
+                <div className="mt-6">
+                  <label className="block mb-2 font-medium text-sky-950">
+                    Referral Code <span className="text-sm font-normal text-gray-500">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="referralCode"
+                      name="referralCode"
+                      type="text"
+                      value={formData.referralCode}
+                      onChange={handleInputChange}
+                      placeholder="Enter referral code if you have one"
+                      className={`w-full px-4 py-2 border rounded-lg transition-colors
+                        focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                        text-gray-900 ${
+                          referralCodeStatus === 'valid'
+                            ? 'border-green-500 bg-green-50'
+                            : referralCodeStatus === 'invalid'
+                              ? 'border-red-500 bg-red-50'
+                              : 'border-gray-300'
+                        }`}
+                    />
+                    {referralCodeStatus === 'validating' && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <Spinner />
+                      </div>
+                    )}
+                    {referralCodeStatus === 'valid' && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-600">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+                        </svg>
+                      </div>
+                    )}
+                    {referralCodeStatus === 'invalid' && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-600">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  {referralCodeStatus === 'valid' && referrerName && (
+                    <p className="mt-1 text-sm text-green-600">
+                      Referred by: {referrerName}
+                    </p>
+                  )}
+                  {errors.referralCode && (
+                    <p className="mt-1 text-sm text-red-500">{errors.referralCode}</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* CreditCardPreview AFTER the card input fields (hidden on mobile for layout) */}
-          <div className="md:col-span-2 mb-4 hidden md:flex justify-center">
-            <CreditCardPreview
-              cardNumber={cardNumber}
-              expiryDate={expiryDate}
-              cvc={cvc}
-            />
-          </div>
 
-          {/* Record Expunction Checkbox */}
-          <div className="md:col-span-2 mb-4">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.requestRecordExpunction}
-                onChange={(e) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    requestRecordExpunction: e.target.checked
-                  }));
-                }}
-                className="form-checkbox h-5 w-5 text-[#D09C01] rounded border-gray-300 focus:ring-[#D09C01]"
-              />
-              <span className="text-neutral-800 font-bold">Request Record Expunctions</span>
-            </label>
-          </div>
 
-          {/* Terms and Submit Button */}
-          <div className="md:col-span-2 text-sm text-neutral-600">
-            <p>
-              By clicking &quot;Fix My Credits Now,&quot; I confirm that I have read,
-              understood, and accepted the foregoing terms and agree to be bound
-              by them.
-            </p>
-            <p className="mt-2">
-              Read the{" "}
-              <a
-                href="/docs/customer-disclosure.pdf"
-                className="text-[#D09C01] hover:underline"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Disclosure Here
-              </a>
-              .
-            </p>
-          </div>
+          {/* Terms and Submit Button Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            {/* Terms and Conditions */}
+            <div className="mb-6 text-sm text-neutral-600">
+              <div className="flex items-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#D09C01] mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3 1h10v8H5V6zm6 6a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-900">Terms & Conditions</h3>
+              </div>
 
-        {/* General message - Make it full width */}
-        {message && (
-          <div className="md:col-span-2">
-            <div
-              className={`mb-0 p-4 rounded w-full ${
+              <p>
+                By clicking &quot;Fix My Credits Now,&quot; I confirm that I have read,
+                understood, and accepted the foregoing terms and agree to be bound
+                by them.
+              </p>
+              <p className="mt-2">
+                Read the{" "}
+                <a
+                  href="/docs/customer-disclosure.pdf"
+                  className="text-[#D09C01] hover:underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Disclosure Here
+                </a>
+                .
+              </p>
+            </div>
+
+            {/* Status Messages */}
+            {message && (
+              <div className={`mb-6 p-4 rounded-lg w-full ${
                 status === "success"
                   ? "bg-green-100 text-green-800"
                   : status === "error"
                   ? "bg-red-100 text-red-800"
                   : "bg-blue-100 text-blue-800"
-              }`}
-            >
-              {message}
-            </div>
-          </div>
-        )}
+              }`}>
+                {message}
+              </div>
+            )}
 
-        {/* Error list - In its own div below the message */}
-        {Object.keys(errors).length > 0 && (
-          <div className="md:col-span-2">
-            <div className="mb-2 p-4 bg-red-100 text-red-800 rounded">
-              <ul className="list-disc list-inside">
-                {Object.keys(errors)
-                  .filter(err => err !== 'card') // Filter out card error as it's shown by meta.error
-                  .map((err, idx) => (
-                    <li key={idx}>{errors[err]}</li>
-                  ))}
-              </ul>
-            </div>
-          </div>
-        )}
+            {/* Error list */}
+            {Object.keys(errors).length > 0 && (
+              <div className="mb-6 p-4 bg-red-100 text-red-800 rounded-lg">
+                <ul className="list-disc list-inside">
+                  {Object.keys(errors)
+                    .filter(err => err !== 'card') // Filter out card error as it's shown by meta.error
+                    .map((err, idx) => (
+                      <li key={idx}>{errors[err]}</li>
+                    ))}
+                </ul>
+              </div>
+            )}
 
-          <div className="md:col-span-2">
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={!isAcceptReady || status === "loading"}
               className="w-full px-8 py-4 text-lg font-medium text-white bg-[#D09C01]
-                rounded hover:bg-[#B88A01] transition-colors duration-200
-                disabled:opacity-50 disabled:cursor-not-allowed"
+                rounded-lg hover:bg-[#B88A01] transition-colors duration-200
+                disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
             >
               {status === "loading" ? (
                 <span className="flex items-center justify-center">
