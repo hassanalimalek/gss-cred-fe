@@ -18,10 +18,9 @@ import { getCreditRepairRequests, CreditRepairRequest } from '@/api/admin';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { TableRowSkeleton } from '@/components/common/Skeleton';
 import { StatusUpdateModal } from '@/components/admin/StatusUpdateModal';
-import {
-  ECreditRepairStatus,
-  CREDIT_REPAIR_STATUS_TEXT
-} from '@/types/creditRepair';
+import { CREDIT_REPAIR_STATUS_TEXT } from '@/types/creditRepair';
+import StatusBadge from '@/components/common/StatusBadge';
+import CountBadge from '@/components/common/CountBadge';
 
 export default function CreditRepairRequestsPage() {
   const [requests, setRequests] = useState<CreditRepairRequest[]>([]);
@@ -154,53 +153,27 @@ export default function CreditRepairRequestsPage() {
     fetchRequests();
   };
 
-  // Status badge component
-  const StatusBadge = ({ status }: { status: number }) => {
-    let bgColor = 'bg-gray-100 text-gray-800';
 
-    switch (status) {
-      case ECreditRepairStatus.GET_STARTED:
-        bgColor = 'bg-blue-100 text-blue-800';
-        break;
-      case ECreditRepairStatus.AUTHORIZE_CONNECT:
-        bgColor = 'bg-purple-100 text-purple-800';
-        break;
-      case ECreditRepairStatus.PARTNER_PROCESSING:
-        bgColor = 'bg-indigo-100 text-indigo-800';
-        break;
-      case ECreditRepairStatus.REPAIR_IN_PROGRESS:
-        bgColor = 'bg-yellow-100 text-yellow-800';
-        break;
-      case ECreditRepairStatus.CONFIRM_DELIVER:
-        bgColor = 'bg-green-100 text-green-800';
-        break;
-      case ECreditRepairStatus.REQUEST_DENIED:
-        bgColor = 'bg-red-100 text-red-800';
-        break;
-      default:
-        bgColor = 'bg-gray-100 text-gray-800';
-    }
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${bgColor}`}>
-        <span className="mr-1 font-semibold">{status}</span>
-        <span className="mx-0.5">-</span>
-        {CREDIT_REPAIR_STATUS_TEXT[status as ECreditRepairStatus]}
-      </span>
-    );
-  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Credit Repair Requests</h1>
-        <button
-          onClick={fetchRequests}
-          className="flex items-center px-3 py-2 text-sm font-medium text-primary bg-white rounded-md border border-gray-300 hover:bg-gray-50"
-        >
-          <ArrowPathIcon className="h-4 w-4 mr-2" />
-          Refresh
-        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Credit Repair Requests</h1>
+        </div>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center">
+            <span className="text-sm text-gray-500 mr-2">Total:</span>
+            <CountBadge count={total} />
+          </div>
+          <button
+            onClick={fetchRequests}
+            className="flex items-center px-3 py-2 text-sm font-medium text-primary bg-white rounded-md border border-gray-300 hover:bg-gray-50"
+          >
+            <ArrowPathIcon className="h-4 w-4 mr-2" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Search and Filter */}
@@ -230,7 +203,7 @@ export default function CreditRepairRequestsPage() {
             <option value="">All Statuses</option>
             {Object.entries(CREDIT_REPAIR_STATUS_TEXT).map(([value, label]) => (
               <option key={value} value={value}>
-                {label}
+                {value} - {label}
               </option>
             ))}
           </select>
@@ -335,7 +308,13 @@ export default function CreditRepairRequestsPage() {
                           <StatusBadge status={request.currentStatus} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(request.createdAt).toLocaleDateString()}
+                          {new Date(request.createdAt).toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
@@ -380,7 +359,7 @@ export default function CreditRepairRequestsPage() {
 
             {/* Pagination */}
             <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-              <div className="flex-1 flex justify-between sm:hidden">
+              <div className="flex-1 flex justify-between items-center sm:hidden">
                 <button
                   onClick={handlePreviousPage}
                   disabled={page === 1}
@@ -390,6 +369,9 @@ export default function CreditRepairRequestsPage() {
                 >
                   Previous
                 </button>
+                <span className="text-sm text-gray-700">
+                  Page {page} of {totalPages || 1}
+                </span>
                 <button
                   onClick={handleNextPage}
                   disabled={page >= totalPages}
@@ -420,7 +402,10 @@ export default function CreditRepairRequestsPage() {
                       <span className="sr-only">Previous</span>
                       <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
                     </button>
-                    {/* Page numbers would go here */}
+                    {/* Current page number */}
+                    <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                      Page {page} of {totalPages || 1}
+                    </span>
                     <button
                       onClick={handleNextPage}
                       disabled={page >= totalPages}

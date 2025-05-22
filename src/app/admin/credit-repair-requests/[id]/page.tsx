@@ -10,7 +10,7 @@ import {
   CheckIcon,
   DocumentDuplicateIcon
 } from '@heroicons/react/24/outline';
-import { getCreditRepairRequestById, CreditRepairRequest } from '@/api/admin';
+import { getCreditRepairRequestById, CreditRepairRequest, getCustomers } from '@/api/admin';
 import { DetailPageSkeleton } from '@/components/common/Skeleton';
 import { StatusUpdateModal } from '@/components/admin/StatusUpdateModal';
 import { ECreditRepairStatus, CREDIT_REPAIR_STATUS_TEXT } from '@/types/creditRepair';
@@ -71,6 +71,7 @@ export default function CreditRepairRequestDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [customerId, setCustomerId] = useState<string | null>(null);
   const router = useRouter();
 
   // Function to copy tracking ID to clipboard
@@ -87,6 +88,24 @@ export default function CreditRepairRequestDetail() {
     }
   };
 
+  // Function to find customer by email
+  const findCustomerByEmail = async (email: string) => {
+    try {
+      // Search for customers with the email
+      const response = await getCustomers(1, 1, 'createdAt', 'desc', email);
+
+      // If we found a matching customer, set the customer ID
+      if (response.data.length > 0 && response.data[0].email === email) {
+        setCustomerId(response.data[0]._id);
+      } else {
+        setCustomerId(null);
+      }
+    } catch (error) {
+      console.error('Error finding customer:', error);
+      setCustomerId(null);
+    }
+  };
+
   useEffect(() => {
     const fetchRequest = async () => {
       if (!id) {
@@ -99,8 +118,14 @@ export default function CreditRepairRequestDetail() {
       try {
         const data = await getCreditRepairRequestById(id);
         setRequest(data);
+
+        // After getting the request, find the customer by email
+        if (data.email) {
+          await findCustomerByEmail(data.email);
+        }
       } catch (error) {
         setRequest(null); // Set request to null on error to show "Not Found"
+        setCustomerId(null);
       } finally {
         setIsLoading(false);
       }
@@ -183,7 +208,20 @@ export default function CreditRepairRequestDetail() {
             <div className="space-y-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Full Name</p>
-                <p className="text-sm font-medium text-gray-900">{request.fullName}</p>
+                {customerId ? (
+                  <a
+                    href={`/admin/customers/${customerId}`}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push(`/admin/customers/${customerId}`);
+                    }}
+                  >
+                    {request.fullName}
+                  </a>
+                ) : (
+                  <p className="text-sm font-medium text-gray-900">{request.fullName}</p>
+                )}
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Email</p>

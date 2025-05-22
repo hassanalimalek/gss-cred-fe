@@ -2,18 +2,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import {
   ClipboardDocumentListIcon,
   CheckCircleIcon,
   ClockIcon,
-  CurrencyDollarIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
-import { getCreditRepairRequests, CreditRepairRequest } from '@/api/admin';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { getCreditRepairRequests, getCreditRepairStatistics, CreditRepairRequest } from '@/api/admin';
 import { CardSkeleton, TableRowSkeleton } from '@/components/common/Skeleton';
 import { ECreditRepairStatus, CREDIT_REPAIR_STATUS_TEXT } from '@/types/creditRepair';
+import { ReferralStats } from '@/components/admin/ReferralStats';
 
 // Dashboard stat card component
 interface StatCardProps {
@@ -21,17 +19,11 @@ interface StatCardProps {
   value: number | string;
   icon: React.ReactNode;
   color: string;
-  delay?: number;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, delay = 0 }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
   return (
-    <motion.div
-      className={`bg-white rounded-lg shadow-sm p-6 border-l-4 ${color}`}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay }}
-    >
+    <div className={`bg-white rounded-lg shadow-sm p-6 border-l-4 ${color}`}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-500">{title}</p>
@@ -41,7 +33,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, delay = 
           {icon}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
@@ -179,8 +171,14 @@ const RecentRequests: React.FC<RecentRequestsProps> = ({ requests, isLoading }) 
             ))
           ) : (
             <tr>
-              <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
-                No recent requests found
+              <td colSpan={5} className="py-12">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="text-gray-300 mb-4">
+                    <ClipboardDocumentListIcon className="h-16 w-16" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900">No requests found</h3>
+                  <p className="text-gray-500 mt-1">There are no credit repair requests available at this time.</p>
+                </div>
               </td>
             </tr>
           )}
@@ -205,42 +203,26 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await getCreditRepairRequests(1, 5);
+        // Fetch recent requests for display (limit to 5)
+        const recentResponse = await getCreditRepairRequests(1, 5);
 
         // If we got an empty response due to auth error, don't update state
-        if (!response.data || (response.data.length === 0 && response.total === 0)) {
+        if (!recentResponse.data || (recentResponse.data.length === 0 && recentResponse.total === 0)) {
           setIsLoading(false);
           return;
         }
 
-        setRequests(response.data);
+        // Set recent requests for display
+        setRequests(recentResponse.data);
 
-        // Calculate stats
-        const total = response.total;
-        const completed = response.data.filter(
-          req => req.currentStatus === ECreditRepairStatus.CONFIRM_DELIVER
-        ).length;
-        const cancelled = response.data.filter(
-          req => req.currentStatus === ECreditRepairStatus.REQUEST_DENIED
-        ).length;
-        const inProgress = response.data.filter(
-          req => req.currentStatus !== ECreditRepairStatus.GET_STARTED &&
-                req.currentStatus !== ECreditRepairStatus.CONFIRM_DELIVER &&
-                req.currentStatus !== ECreditRepairStatus.REQUEST_DENIED
-        ).length;
-        const pending = response.data.filter(
-          req => req.currentStatus === ECreditRepairStatus.GET_STARTED
-        ).length;
+        // Fetch statistics from the backend
+        const statistics = await getCreditRepairStatistics();
 
-        setStats({
-          total,
-          completed,
-          inProgress,
-          pending,
-          cancelled,
-        });
+        // Update stats state with data from the backend
+        setStats(statistics);
       } catch (error) {
-        // Silently handle error
+        console.error('Error fetching dashboard data:', error);
+        // Silently handle error for UI
       } finally {
         setIsLoading(false);
       }
@@ -283,28 +265,24 @@ export default function AdminDashboard() {
               value={stats.total}
               icon={<ClipboardDocumentListIcon className="h-6 w-6 text-primary" />}
               color="border-primary"
-              delay={0.1}
             />
             <StatCard
               title="In Progress"
               value={stats.inProgress}
               icon={<ClockIcon className="h-6 w-6 text-yellow-500" />}
               color="border-yellow-500"
-              delay={0.2}
             />
             <StatCard
               title="Completed"
               value={stats.completed}
               icon={<CheckCircleIcon className="h-6 w-6 text-green-500" />}
               color="border-green-500"
-              delay={0.3}
             />
             <StatCard
               title="Cancelled"
               value={stats.cancelled}
               icon={<XMarkIcon className="h-6 w-6 text-red-500" />}
               color="border-red-500"
-              delay={0.4}
             />
           </>
         )}
@@ -323,6 +301,9 @@ export default function AdminDashboard() {
         </div>
         <RecentRequests requests={requests} isLoading={isLoading} />
       </div>
+
+      {/* Referral Statistics */}
+      <ReferralStats className="mt-6" />
     </div>
   );
 }
