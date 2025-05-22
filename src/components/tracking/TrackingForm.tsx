@@ -11,12 +11,14 @@ interface TrackingFormProps {
   setTrackingData: React.Dispatch<React.SetStateAction<StatusTrackingResponse | null>>;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setCurrentTrackingId?: React.Dispatch<React.SetStateAction<string>>;
 }
 
 export const TrackingForm: React.FC<TrackingFormProps> = ({
   setTrackingData,
   setIsLoading,
-  setError
+  setError,
+  setCurrentTrackingId
 }) => {
   const [trackingId, setTrackingId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,6 +53,10 @@ export const TrackingForm: React.FC<TrackingFormProps> = ({
     try {
       const data = await getStatusByTrackingId(trimmedId);
       setTrackingData(data);
+      // Store the tracking ID for display
+      if (setCurrentTrackingId) {
+        setCurrentTrackingId(trimmedId);
+      }
     } catch (error: any) {
       setError(error.message || 'Failed to retrieve tracking information');
       setTrackingData(null);

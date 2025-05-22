@@ -10,29 +10,17 @@ import {
 } from '@heroicons/react/24/solid';
 import {
   DocumentTextIcon,
-  UserIcon,
   ClipboardDocumentCheckIcon,
   BuildingLibraryIcon,
-  ComputerDesktopIcon,
   CogIcon,
   CheckBadgeIcon,
-  DocumentMagnifyingGlassIcon,
   DocumentCheckIcon,
   InformationCircleIcon,
   ChatBubbleLeftEllipsisIcon,
   ArrowPathIcon, // For pending state
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-
-// --- For self-contained example ---
-enum ECreditRepairStatus {
-  GET_STARTED = 1,
-  AUTHORIZE_CONNECT = 2,
-  PARTNER_PROCESSING = 3,
-  REPAIR_IN_PROGRESS = 4,
-  CONFIRM_DELIVER = 5,
-  REQUEST_DENIED = 6,
-}
+import { ECreditRepairStatus } from '@/types/creditRepair';
 
 const fadeInItem = {
   hidden: { opacity: 0, y: 20 },
@@ -176,10 +164,10 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({
       initial="hidden"
       animate="visible"
       variants={fadeInItem} // Apply to the whole container
-      className="bg-gradient-to-br from-slate-800 via-slate-800 to-indigo-900/60 rounded-2xl shadow-2xl shadow-indigo-900/30 p-6 md:p-8 text-slate-200 max-w-2xl mx-auto"
+      className="bg-gradient-to-br from-slate-800 via-slate-800 to-indigo-900/60 rounded-2xl shadow-2xl shadow-indigo-900/30 p-6 md:p-8 text-slate-200 max-w-5xl mx-auto"
       aria-live="polite" // Announce changes
     >
-      <div className="mb-8">
+      <div className="mb-8 border border-red-500">
         <motion.h2
           layout
           variants={fadeInItem}
@@ -200,17 +188,26 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({
       </div>
 
       <div className="relative">
-        {/* Vertical Timeline Track */}
-        <div className="absolute left-5 top-2.5 bottom-2.5 w-1 bg-slate-700/70 rounded-full transform -translate-x-1/2"></div>
-        {/* Vertical Timeline Progress */}
+        {/* Timeline Track - Vertical on mobile, Horizontal on desktop */}
+        <div className="md:hidden absolute left-5 top-2.5 bottom-2.5 w-1 bg-slate-700/70 rounded-full transform -translate-x-1/2"></div>
+        <div className="hidden md:block absolute left-0 right-0 top-5 h-1 bg-slate-700/70 rounded-full"></div>
+
+        {/* Timeline Progress - Vertical on mobile, Horizontal on desktop */}
         <motion.div
-          className="absolute left-5 top-2.5 w-1 bg-gradient-to-b from-indigo-500 via-purple-500 to-pink-500 rounded-full transform -translate-x-1/2"
+          className="md:hidden absolute left-5 top-2.5 w-1 bg-gradient-to-b from-indigo-500 via-purple-500 to-pink-500 rounded-full transform -translate-x-1/2"
           initial={{ height: 0 }}
           animate={{ height: `${getOverallProgress()}%` }}
           transition={{ duration: 1.5, ease: "circOut", delay: 0.5 }}
         />
+        <motion.div
+          className="hidden md:block absolute left-0 top-5 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: `${getOverallProgress()}%` }}
+          transition={{ duration: 1.5, ease: "circOut", delay: 0.5 }}
+        />
 
-        <div className="space-y-3">
+        {/* Status items - Stack vertically on mobile, horizontally on desktop */}
+        <div className="md:flex md:justify-between md:items-start md:space-x-6 space-y-3 md:space-y-0 md:px-4">
           {allStatuses.map((step, index) => {
             const state = getStepState(step.status);
             const historyEntry = statusHistory.find(h => h.status === step.status);
@@ -258,14 +255,17 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({
                 key={step.status}
                 variants={fadeInItem}
                 custom={index + 2} // Stagger delay, after header
-                className={`relative pl-12 group transition-opacity duration-300 ${state === 'pending' && !isExpanded ? 'opacity-70 hover:opacity-100' : 'opacity-100'} ${state === 'current' ? 'bg-slate-700/30 rounded-lg p-3 -ml-3 -mr-3 current-step-glow' : 'py-3'}`}
+                className={`relative md:flex-1 md:flex md:flex-col md:items-center transition-opacity duration-300 status-step
+                  ${state === 'pending' && !isExpanded ? 'opacity-70 hover:opacity-100' : 'opacity-100'}
+                  ${state === 'current' ? 'bg-slate-700/30 rounded-lg p-3 md:p-4 -ml-3 -mr-3 md:mx-0 md:mt-0 current-step-glow' : 'py-3 md:pt-12 md:pb-3'}
+                  pl-12 md:pl-0 group`}
                 aria-current={state === 'current' ? "step" : undefined}
               >
-                {/* Node */}
+                {/* Node - Different positioning for mobile vs desktop */}
                 <motion.div
                   layout
-                  className={`absolute left-5 top-1/2 -translate-y-1/2 -translate-x-1/2 w-10 h-10 rounded-full border-2 flex items-center justify-center shadow-md transition-all duration-300
-                    ${nodeStyles.bgColor} ${nodeStyles.borderColor}
+                  className={`absolute md:static left-5 top-1/2 md:top-auto md:transform-none -translate-y-1/2 -translate-x-1/2 md:translate-y-0 md:translate-x-0 w-10 h-10 rounded-full border-2 flex items-center justify-center shadow-md transition-all duration-300
+                    ${nodeStyles.bgColor} ${nodeStyles.borderColor} md:mb-3
                   `}
                   whileHover={isClickable && !shouldReduceMotion ? { scale: 1.15, transition: { type: 'spring', stiffness: 300 } } : {}}
                   onClick={() => isClickable && setExpandedStep(isExpanded ? null : step.status)}
@@ -302,10 +302,10 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({
                   )}
                 </motion.div>
 
-                {/* Content */}
-                <motion.div layout className="pl-4">
+                {/* Content - Different layout for mobile vs desktop */}
+                <motion.div layout className="pl-4 md:pl-0 md:w-full md:text-center">
                   <div
-                    className={`flex justify-between items-center ${isClickable ? 'cursor-pointer group-hover:bg-slate-700/50 -mx-2 px-2 py-1 rounded-md transition-colors' : 'cursor-default'}`}
+                    className={`flex md:flex-col justify-between md:justify-center items-center ${isClickable ? 'cursor-pointer group-hover:bg-slate-700/50 -mx-2 md:mx-0 px-2 py-1 rounded-md transition-colors' : 'cursor-default'}`}
                     onClick={() => isClickable && setExpandedStep(isExpanded ? null : step.status)}
                     aria-hidden="true" // Redundant with node click, but good for visual grouping
                   >
@@ -314,7 +314,7 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({
                     </h3>
                     {isClickable && (
                       <ChevronDownIcon
-                        className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${isExpanded ? 'transform rotate-180' : ''}`}
+                        className={`w-5 h-5 text-slate-400 transition-transform duration-300 md:mt-1 ${isExpanded ? 'transform rotate-180' : ''}`}
                       />
                     )}
                   </div>
@@ -328,24 +328,24 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({
                         initial="hidden"
                         animate="visible"
                         exit="exit"
-                        className="pr-2 overflow-hidden"
+                        className="pr-2 md:pr-0 overflow-hidden md:absolute md:top-full md:left-0 md:right-0 md:mt-2 md:bg-slate-800/90 md:backdrop-blur-sm md:p-4 md:rounded-lg md:shadow-lg md:z-10 md:border md:border-slate-700"
                       >
-                        <p className="text-sm text-slate-300 mb-3 leading-relaxed">
+                        <p className="text-sm text-slate-300 mb-3 leading-relaxed md:text-center">
                           {step.description}
                         </p>
                         {historyEntry?.timestamp && (
-                          <div className="flex items-center text-xs text-slate-400 mb-3">
+                          <div className="flex items-center text-xs text-slate-400 mb-3 md:justify-center">
                             <ClockIcon className="w-4 h-4 mr-2 text-indigo-400 flex-shrink-0" />
                             <span>{state === 'completed' ? 'Completed:' : 'Updated:'} <span className="font-medium text-slate-200">{formatTimestamp(historyEntry.timestamp)}</span></span>
                           </div>
                         )}
                         {notes && (
                           <div className="bg-slate-700/60 p-3 rounded-lg border border-slate-600/80 shadow-inner">
-                            <div className="flex items-center text-xs text-indigo-300 mb-1.5 font-medium">
+                            <div className="flex items-center text-xs text-indigo-300 mb-1.5 font-medium md:justify-center">
                                <ChatBubbleLeftEllipsisIcon className="w-4 h-4 mr-2 flex-shrink-0"/>
                                A quick note:
                             </div>
-                            <p className="text-sm text-slate-300 italic">"{notes}"</p>
+                            <p className="text-sm text-slate-300 italic md:text-center">"{notes}"</p>
                           </div>
                         )}
                         {/* "What's Next?" Teaser */}
@@ -354,12 +354,12 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({
                             initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{delay:0.3}}
                             className="mt-4 pt-3 border-t border-slate-700"
                           >
-                            <div className="flex items-center text-xs text-purple-400 mb-1 font-medium">
+                            <div className="flex items-center text-xs text-purple-400 mb-1 font-medium md:justify-center">
                               <SparklesIcon className="w-4 h-4 mr-2 flex-shrink-0" />
                               Next up:
                             </div>
-                            <p className="text-sm text-slate-300 font-medium">{nextPendingStep.statusText}</p>
-                            <p className="text-xs text-slate-400">{nextPendingStep.description}</p>
+                            <p className="text-sm text-slate-300 font-medium md:text-center">{nextPendingStep.statusText}</p>
+                            <p className="text-xs text-slate-400 md:text-center">{nextPendingStep.description}</p>
                           </motion.div>
                         )}
                       </motion.div>
@@ -367,7 +367,7 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({
                   </AnimatePresence>
                   {/* For pending steps, show description subtly if not expanded */}
                   {!isExpanded && state === 'pending' && (
-                     <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                     <p className="text-sm text-slate-500 mt-1 leading-relaxed md:text-center">
                        {step.description}
                      </p>
                   )}
@@ -392,6 +392,20 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({
        <style jsx global>{`
         .current-step-glow {
           box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.2), 0 0 10px -3px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Add connector lines between steps on desktop */
+        @media (min-width: 768px) {
+          .status-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            right: -50%;
+            width: 100%;
+            height: 1px;
+            background-color: rgba(99, 102, 241, 0.2);
+            z-index: 0;
+          }
         }
       `}</style>
     </motion.div>

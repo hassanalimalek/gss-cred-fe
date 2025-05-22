@@ -3,30 +3,26 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
-  UserCircleIcon as HeaderUserIcon,
   CalendarDaysIcon,
   TagIcon,
   ArrowPathIcon as HeaderUpdateIcon,
 } from '@heroicons/react/24/solid';
 import {
   CheckIcon,
-  ChevronDownIcon,
   ClockIcon,
   SparklesIcon,
   DocumentTextIcon,
-  UserIcon as StepUserIcon,
   ClipboardDocumentCheckIcon,
   BuildingLibraryIcon,
-  ComputerDesktopIcon,
   CogIcon,
   CheckBadgeIcon,
-  DocumentMagnifyingGlassIcon,
   DocumentCheckIcon as StepDocumentCheckIcon,
   InformationCircleIcon,
   ChatBubbleLeftEllipsisIcon,
   ArrowPathIcon as PendingStepIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { ECreditRepairStatus } from '@/types/creditRepair';
 
 
 // --- Type Definitions ---
@@ -50,19 +46,11 @@ export interface CustomTrackingData {
   statusText?: string;
   allStatuses: TrackingStep[];
   statusHistory: StatusHistoryEntry[];
+  trackingId?: string; // Add tracking ID field
 }
 
 interface CustomApplicationTrackingProps {
   trackingData: CustomTrackingData;
-}
-
-enum ECreditRepairStatus {
-  GET_STARTED = 1,
-  AUTHORIZE_CONNECT = 2,
-  PARTNER_PROCESSING = 3,
-  REPAIR_IN_PROGRESS = 4,
-  CONFIRM_DELIVER = 5,
-  REQUEST_DENIED = 6,
 }
 // --- End Type Definitions ---
 
@@ -75,41 +63,6 @@ const dashboardFadeInItem = {
     y: 0,
     transition: { delay: i * 0.1, duration: 0.5, ease: 'easeOut' },
   }),
-};
-
-const contentVariants = {
-  hidden: { opacity: 0, height: 0, marginTop: 0, scale: 0.98 },
-  visible: {
-    opacity: 1,
-    height: 'auto',
-    marginTop: '0.75rem',
-    scale: 1,
-    transition: {
-      height: { duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] },
-      opacity: { duration: 0.25, delay: 0.15 },
-      scale: { duration: 0.35, ease: "easeOut" }
-    },
-  },
-  exit: {
-    opacity: 0,
-    height: 0,
-    marginTop: 0,
-    scale: 0.98,
-    transition: {
-      height: { duration: 0.35, ease: [0.04, 0.62, 0.23, 0.98] },
-      opacity: { duration: 0.2 },
-      scale: { duration: 0.3 }
-    },
-  }
-};
-
-const staggeredContentVariants = {
-  hidden: { opacity: 0, y: 5 },
-  visible: (i: number = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: 0.05 + (i * 0.1), duration: 0.35, ease: "easeOut" }
-  })
 };
 // --- End Animation Variants ---
 
@@ -132,8 +85,8 @@ const getStepStatusIconComponent = (status: number, className: string = "w-5 h-5
 export const CustomApplicationTracking: React.FC<CustomApplicationTrackingProps> = ({
   trackingData,
 }) => {
-  const { customerName, submissionDate, currentStatus, allStatuses, statusHistory } = trackingData;
-  const [expandedStep, setExpandedStep] = useState<number | null>(null);
+  const { customerName, submissionDate, currentStatus, allStatuses, statusHistory, trackingId } = trackingData;
+  const [modalStep, setModalStep] = useState<number | null>(null);
   const [isClient, setIsClient] = useState(false);
   const shouldReduceMotion = useReducedMotion();
 
@@ -150,13 +103,7 @@ export const CustomApplicationTracking: React.FC<CustomApplicationTrackingProps>
 
   useEffect(() => {
     setIsClient(true);
-    // Always expand the CONFIRM_DELIVER step when it's the current status
-    if (currentStatus === ECreditRepairStatus.CONFIRM_DELIVER) {
-      setExpandedStep(ECreditRepairStatus.CONFIRM_DELIVER);
-    } else {
-      setExpandedStep(currentStatus);
-    }
-  }, [currentStatus]);
+  }, []);
 
   const getStepState = (stepStatusValue: number): 'completed' | 'current' | 'pending' => {
     // If current status is CONFIRM_DELIVER (5), mark all steps including the current one as completed
@@ -221,10 +168,20 @@ export const CustomApplicationTracking: React.FC<CustomApplicationTrackingProps>
   const requestDeniedHistory = isRequestDenied ? statusHistory.find(h => h.status === ECreditRepairStatus.REQUEST_DENIED) : null;
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={dashboardFadeInItem} className="bg-gradient-to-br from-slate-800 via-slate-800 to-indigo-900/70 rounded-2xl shadow-2xl shadow-indigo-900/40 p-6 md:p-8 text-slate-200 max-w-4xl mx-auto" aria-live="polite">
+    <motion.div initial="hidden" animate="visible" variants={dashboardFadeInItem} className="bg-slate-800 rounded-2xl shadow-2xl shadow-slate-900/30 p-6 md:p-8 text-slate-200 max-w-7xl lg:max-w-7xl  mx-auto" aria-live="polite">
       <motion.div variants={dashboardFadeInItem} custom={0.2} className="mb-8">
-        <h1 className="text-2xl md:text-4xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-2">Hi, {customerName}!</h1>
-        <p className="text-slate-300 text-lg mb-4">Here's the latest on your application.</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl md:text-4xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-2">Hi, {customerName}!</h1>
+            <p className="text-slate-300 text-lg mb-4">Here's the latest on your application.</p>
+          </div>
+          {trackingId && (
+            <div className="bg-slate-700/60 px-3 py-2 rounded-lg border border-slate-600/80 text-right">
+              <p className="text-xs font-medium text-slate-400 tracking-wide uppercase">Tracking ID</p>
+              <p className="text-sm font-mono font-semibold text-indigo-300">{trackingId}</p>
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {headerInfoItems.map((item, idx) => (
             <motion.div key={item.label} variants={dashboardFadeInItem} custom={0.4 + idx * 0.1} className={`bg-slate-700/60 p-4 rounded-xl border border-slate-600/80 flex items-start space-x-3 hover:border-${item.color}-500/60 transition-colors duration-200 shadow-md`}>
@@ -274,15 +231,57 @@ export const CustomApplicationTracking: React.FC<CustomApplicationTrackingProps>
         </motion.div>
       ) : (
         <motion.div variants={dashboardFadeInItem} custom={0.8} className="relative">
-          <div className="absolute left-5 top-2.5 bottom-2.5 w-1 bg-slate-700/70 rounded-full transform -translate-x-1/2 z-0"></div>
-          <motion.div className="absolute left-5 top-2.5 w-1 bg-gradient-to-b from-indigo-500 via-purple-500 to-pink-500 rounded-full transform -translate-x-1/2 z-0" initial={{ height: 0 }} animate={{ height: `${getOverallProgress()}%` }} transition={{ duration: 1.5, ease: "circOut", delay: 1 }}/>
+          {/* Vertical timeline track for mobile */}
+          <div className="md:hidden absolute left-5 top-2.5 bottom-2.5 w-1 bg-slate-600 rounded-full transform -translate-x-1/2 z-0"></div>
+          <motion.div
+            className="md:hidden absolute left-5 top-2.5 w-1 bg-gradient-to-b from-indigo-500 via-purple-500 to-pink-500 rounded-full transform -translate-x-1/2 z-0"
+            initial={{ height: 0 }}
+            animate={{
+              height: `${getOverallProgress()}%`,
+              transition: { duration: 1.5, ease: "circOut", delay: 1 }
+            }}
+            whileInView={{
+              opacity: [0.8, 1, 0.8],
+              boxShadow: [
+                "0 0 3px 0px rgba(99, 102, 241, 0.3)",
+                "0 0 10px 2px rgba(99, 102, 241, 0.6)",
+                "0 0 3px 0px rgba(99, 102, 241, 0.3)"
+              ]
+            }}
+            transition={{
+              opacity: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
+              boxShadow: { repeat: Infinity, duration: 2.5, ease: "easeInOut" }
+            }}
+          />
 
-          <div className="space-y-3">
+          {/* Horizontal timeline track for desktop */}
+          <div className="hidden md:block absolute left-0 right-0 top-5 h-1.5 bg-slate-600 rounded-full z-0"></div>
+          <motion.div
+            className="hidden md:block absolute left-0 top-5 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full z-0"
+            initial={{ width: 0 }}
+            animate={{
+              width: `${getOverallProgress()}%`,
+              transition: { duration: 1.5, ease: "circOut", delay: 1 }
+            }}
+            whileInView={{
+              opacity: [0.8, 1, 0.8],
+              boxShadow: [
+                "0 0 3px 0px rgba(99, 102, 241, 0.3)",
+                "0 0 10px 2px rgba(99, 102, 241, 0.6)",
+                "0 0 3px 0px rgba(99, 102, 241, 0.3)"
+              ]
+            }}
+            transition={{
+              opacity: { repeat: Infinity, duration: 2.5, ease: "easeInOut" },
+              boxShadow: { repeat: Infinity, duration: 2.5, ease: "easeInOut" }
+            }}
+          />
+
+          {/* Status items - vertical on mobile, horizontal on desktop */}
+          <div className="space-y-3 md:space-y-0 md:flex md:justify-between md:items-start md:space-x-6 md:pt-12 md:px-6">
             {filteredStatuses.map((step, index) => {
             const state = getStepState(step.status);
             const historyEntry = statusHistory.find(h => h.status === step.status && new Date(h.timestamp).toString() !== "Invalid Date");
-            const notes = historyEntry?.userNotes;
-            const isExpanded = expandedStep === step.status;
             const isClickable = state !== 'pending';
             // Special case for CONFIRM_DELIVER when it's the current status
             const isCurrentStep = state === 'current' || (isApplicationCompleted && step.status === ECreditRepairStatus.CONFIRM_DELIVER);
@@ -297,31 +296,42 @@ export const CustomApplicationTracking: React.FC<CustomApplicationTrackingProps>
             } else if (isCurrentStep) {
               nodeStyling = { ...nodeStyling, bgColor: 'bg-indigo-500', borderColor: 'border-indigo-400', titleColor: 'text-indigo-300 font-semibold', numberBadgeColor: 'bg-indigo-600 text-white' };
             } else {
-              nodeStyling = { ...nodeStyling, bgColor: 'bg-slate-800', borderColor: 'border-slate-600', titleColor: 'text-slate-500', numberBadgeColor: 'bg-slate-600 text-slate-300' };
+              // Make pending steps more visible with lighter colors
+              nodeStyling = { ...nodeStyling, bgColor: 'bg-slate-600', borderColor: 'border-slate-500', titleColor: 'text-slate-300', numberBadgeColor: 'bg-slate-500 text-white' };
             }
 
-           
-            // Base classes for all step items
-            let itemWrapperClasses = "relative pl-12 py-3 group transition-opacity duration-300";
-            if (state === 'pending' && !isExpanded) itemWrapperClasses += ' opacity-60 hover:opacity-100';
+
+            // Base classes for all step items - different for mobile vs desktop
+            let itemWrapperClasses = "relative group transition-opacity duration-300 md:flex-1 md:flex md:flex-col md:items-center";
+
+            // Mobile-specific classes
+            itemWrapperClasses += " pl-12 py-3";
+
+            // Desktop-specific classes
+            itemWrapperClasses += " md:pl-0 md:py-0";
+
+            // Opacity classes
+            if (state === 'pending') itemWrapperClasses += ' opacity-60 hover:opacity-100';
             else itemWrapperClasses += ' opacity-100';
 
             // Additive classes for the current step
             if (isCurrentStep) {
               if (isApplicationCompleted && step.status === ECreditRepairStatus.CONFIRM_DELIVER) {
-                itemWrapperClasses += ' bg-emerald-700/20 rounded-lg px-3 current-step-glow-green'; // Green glow for completed final step
+                // Green glow for completed final step
+                itemWrapperClasses += ' bg-emerald-700/20 rounded-lg px-3 md:px-2 md:py-2 current-step-glow-green';
               } else {
-                itemWrapperClasses += ' bg-slate-700/50 rounded-lg px-3 current-step-glow'; // Use px-3, no -ml- -mr-
+                // Regular glow for current step
+                itemWrapperClasses += ' bg-slate-700/50 rounded-lg px-3 md:px-2 md:py-2 current-step-glow';
               }
             }
 
-            // Node icon's left position is now always left-5
-            const nodeLeftClass = 'left-5';
+            // Node positioning - different for mobile vs desktop
+            const nodeLeftClass = 'left-5 md:static md:left-auto md:transform-none md:mb-3';
 
-            // Adjust content padding for current step to maintain text alignment
-            // Inactive: item pl-12 (3rem) + content pl-4 (1rem) = 4rem total text indent
-            // Active: item pl-12 (3rem) + item px-3 (adds 0.75rem pl) + content pl-1 (0.25rem) = 4rem total
-            const contentPlClass = isCurrentStep ? 'pl-1' : 'pl-4';
+            // Content padding - different for mobile vs desktop
+            const contentPlClass = isCurrentStep
+              ? 'pl-1 md:pl-0 md:w-full md:text-center'
+              : 'pl-4 md:pl-0 md:w-full md:text-center';
             // --- END MODIFICATION ---
 
             return (
@@ -334,14 +344,13 @@ export const CustomApplicationTracking: React.FC<CustomApplicationTrackingProps>
                 aria-current={isCurrentStep ? "step" : undefined}
               >
                 <motion.div
-                  // layout // Removed layout from node wrapper
-                  className={`absolute ${nodeLeftClass} top-1/2 -translate-y-1/2 -translate-x-1/2 w-10 h-10 rounded-full border-2 flex items-center justify-center shadow-lg transition-all duration-300 ${nodeStyling.bgColor} ${nodeStyling.borderColor} z-10`}
+                  className={`absolute md:relative ${nodeLeftClass} top-1/2 md:top-auto -translate-y-1/2 md:translate-y-0 -translate-x-1/2 md:translate-x-0 w-10 h-10 rounded-full border-2 flex items-center justify-center shadow-lg transition-all duration-300 ${nodeStyling.bgColor} ${nodeStyling.borderColor} z-10`}
                   whileHover={isClickable && !shouldReduceMotion ? { scale: 1.15, transition: { type: 'spring', stiffness: 300 } } : {}}
-                  onClick={() => isClickable && setExpandedStep(isExpanded ? null : step.status)}
+                  onClick={() => isClickable && setModalStep(step.status)}
                   tabIndex={isClickable ? 0 : -1}
-                  onKeyPress={(e) => (e.key === 'Enter' || e.key === ' ') && isClickable && setExpandedStep(isExpanded ? null : step.status)}
-                  aria-expanded={isExpanded}
-                  aria-controls={`step-content-${step.status}`}
+                  onKeyPress={(e) => (e.key === 'Enter' || e.key === ' ') && isClickable && setModalStep(step.status)}
+                  aria-haspopup="dialog"
+                  aria-controls={`modal-content-${step.status}`}
                 >
                   {state === 'completed' || (isApplicationCompleted && step.status === ECreditRepairStatus.CONFIRM_DELIVER) ? (
                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 15, delay: 0.1 }}><CheckIcon className="w-5 h-5 text-white" /></motion.div>
@@ -357,36 +366,30 @@ export const CustomApplicationTracking: React.FC<CustomApplicationTrackingProps>
                 </motion.div>
 
                 <motion.div layout className={contentPlClass}> {/* Use dynamic content padding class */}
-                  <motion.div
-                    className={`flex justify-between items-center ${isClickable ? 'cursor-pointer group-hover:bg-slate-700/70 -mx-2 px-2 py-1.5 rounded-md transition-all duration-200' : 'cursor-default -mx-2 px-2 py-1.5'}`}
-                    onClick={() => isClickable && setExpandedStep(isExpanded ? null : step.status)}
-                    aria-hidden={!isClickable}
-                    whileHover={isClickable && !shouldReduceMotion ? { backgroundColor: 'rgba(51, 65, 85, 0.5)' } : {}}
-                    animate={isExpanded ? { backgroundColor: 'rgba(51, 65, 85, 0.4)' } : { backgroundColor: 'rgba(0,0,0,0)'}}
-                    transition={{ duration: 0.2 }}
-                  >
+                  <div className="flex md:flex-col justify-between md:justify-center items-center -mx-2 px-2 py-1.5">
                     <h3 className={`text-sm md:text-xl ${nodeStyling.titleColor} transition-colors duration-200`}>{step.statusText}</h3>
                     <div className="flex items-center">
                       {(state === 'completed' || isCurrentStep) && historyEntry?.timestamp && (
-                        <span className={`text-xs mr-3 font-medium flex items-center ${isCurrentStep ? 'text-indigo-300' : 'text-slate-400'}`}>
+                        <span className={`text-xs mr-3 md:mr-0 md:mt-1 font-medium flex items-center ${isCurrentStep ? 'text-indigo-300' : 'text-slate-400'}`}>
                           <ClockIcon className="w-3 h-3 mr-1 flex-shrink-0" />{formatTimestamp(historyEntry.timestamp)}
                         </span>
                       )}
-                      {isClickable && (<motion.div className="flex items-center justify-center w-5 h-5 ml-2" animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.4, type: "spring", bounce: 0.3 }}><ChevronDownIcon className="w-5 h-5 text-slate-400 group-hover:text-slate-200 transition-colors duration-200" /></motion.div>)}
+                      {isClickable && (
+                        <motion.button
+                          className={`flex items-center justify-center w-6 h-6 ml-2  md:mt-2 rounded-full bg-indigo-500/80 hover:bg-indigo-500 transition-colors duration-200 shadow-md`}
+                          onClick={() => setModalStep(step.status)}
+                          whileHover={!shouldReduceMotion ? { scale: 1.1 } : {}}
+                          whileTap={!shouldReduceMotion ? { scale: 0.95 } : {}}
+                          aria-haspopup="dialog"
+                          aria-controls={`modal-content-${step.status}`}
+                        >
+                          <InformationCircleIcon className="w-4 h-4 text-white " />
+                        </motion.button>
+                      )}
                     </div>
-                  </motion.div>
+                  </div>
 
-                  <AnimatePresence initial={false}>
-                    {isExpanded && isClickable && (
-                      <motion.div layout id={`step-content-${step.status}`} variants={contentVariants} initial="hidden" animate="visible" exit="exit" className="pr-2 overflow-hidden">
-                        <motion.div variants={staggeredContentVariants} custom={0} className="accordion-content-wrapper"><p className="text-sm text-slate-300 mb-3 leading-relaxed">{step.description}</p></motion.div>
-                        {historyEntry?.timestamp && (<motion.div variants={staggeredContentVariants} custom={1} className="flex items-center text-xs text-slate-400 mb-3"><ClockIcon className="w-4 h-4 mr-2 text-indigo-400 flex-shrink-0" /><span>{state === 'completed' ? 'Completed:' : 'Updated:'} <span className="font-medium text-slate-200">{formatTimestamp(historyEntry.timestamp)}</span></span></motion.div>)}
-                        {notes && (<motion.div variants={staggeredContentVariants} custom={2} className="bg-slate-700/80 p-3 rounded-lg border border-slate-600/90 shadow-inner"><div className="flex items-center text-xs text-indigo-300 mb-1.5 font-medium"><ChatBubbleLeftEllipsisIcon className="w-4 h-4 mr-2 flex-shrink-0"/> Our team's note:</div><p className="text-sm text-slate-300 italic">"{notes}"</p></motion.div>)}
-                        {isCurrentStep && nextPendingStep && !isAllStepsCompleted && !isApplicationCompleted && (<motion.div variants={staggeredContentVariants} custom={3} className="mt-4 pt-3 border-t border-slate-700/80"><div className="flex items-center text-xs text-purple-400 mb-1 font-medium"><SparklesIcon className="w-4 h-4 mr-2 flex-shrink-0" /> What's next:</div><p className="text-sm text-slate-300 font-medium">{nextPendingStep.statusText}</p><p className="text-xs text-slate-400">{nextPendingStep.description}</p></motion.div>)}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  {!isExpanded && state === 'pending' && (<p className="text-sm text-slate-500 mt-1 leading-relaxed">{step.description}</p>)}
+                  {state === 'pending' && (<p className="text-sm text-slate-300 mt-1 leading-relaxed md:text-center">{step.description}</p>)}
                 </motion.div>
               </motion.div>
             );
@@ -407,14 +410,104 @@ export const CustomApplicationTracking: React.FC<CustomApplicationTrackingProps>
           <p className="text-sm text-emerald-300">Congratulations, all steps have been successfully completed.</p>
         </motion.div>
       )}
+      {/* Step Detail Modal */}
+      <AnimatePresence>
+        {modalStep !== null && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-slate-800 border border-slate-700 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+            >
+              {(() => {
+                const step = filteredStatuses.find(s => s.status === modalStep);
+                if (!step) return null;
+
+                const state = getStepState(step.status);
+                const historyEntry = statusHistory.find(h => h.status === step.status && new Date(h.timestamp).toString() !== "Invalid Date");
+                const notes = historyEntry?.userNotes;
+                const isCurrentStep = state === 'current' || (isApplicationCompleted && step.status === ECreditRepairStatus.CONFIRM_DELIVER);
+
+                return (
+                  <>
+                    <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-700">
+                      <h2 className="text-xl font-semibold text-white">{step.statusText}</h2>
+                      <button
+                        onClick={() => setModalStep(null)}
+                        className="flex items-center text-slate-400 hover:text-white transition-colors"
+                        aria-label="Close modal"
+                      >
+                        <span className="mr-1 text-sm">Close</span>
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-5">
+                      <div>
+                        <h3 className="text-base font-medium text-white mb-2">Description</h3>
+                        <p className="text-slate-300">{step.description}</p>
+                      </div>
+
+                      {historyEntry?.timestamp && (
+                        <div>
+                          <h3 className="text-base font-medium text-white mb-2">
+                            {state === 'completed' ? 'Completed' : 'Last Updated'}
+                          </h3>
+                          <p className="text-slate-300 flex items-center">
+                            <ClockIcon className="w-4 h-4 mr-2 text-indigo-400 flex-shrink-0" />
+                            <span className="font-medium">{formatTimestamp(historyEntry.timestamp)}</span>
+                          </p>
+                        </div>
+                      )}
+
+                      {notes && (
+                        <div>
+                          <h3 className="text-base font-medium text-white mb-2">Team Notes</h3>
+                          <div className="bg-slate-700 p-4 rounded-lg border border-slate-600">
+                            <p className="text-slate-300 italic">"{notes}"</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {isCurrentStep && nextPendingStep && !isAllStepsCompleted && !isApplicationCompleted && (
+                        <div className="border-t border-slate-700 pt-4 mt-4">
+                          <h3 className="text-base font-medium text-white mb-2">What's Next</h3>
+                          <p className="text-slate-300 font-medium">{nextPendingStep.statusText}</p>
+                          <p className="text-sm text-slate-400 mt-1">{nextPendingStep.description}</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <style jsx global>{`
         .current-step-glow { box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.2), 0 0 10px -3px rgba(99, 102, 241, 0.1); }
         .current-step-glow-green { box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.2), 0 0 10px -3px rgba(16, 185, 129, 0.1); }
-        .accordion-content-wrapper { transform-origin: top; will-change: transform, opacity; }
         .hover\\:border-sky-500\\/60:hover { border-color: rgba(14, 165, 233, 0.6) !important; } .bg-sky-500\\/20 { background-color: rgba(14, 165, 233, 0.2) !important; } .text-sky-400 { color: #38bdf8 !important; }
         .hover\\:border-purple-500\\/60:hover { border-color: rgba(168, 85, 247, 0.6) !important; } .bg-purple-500\\/20 { background-color: rgba(168, 85, 247, 0.2) !important; } .text-purple-400 { color: #c084fc !important; }
         .hover\\:border-amber-500\\/60:hover { border-color: rgba(245, 158, 11, 0.6) !important; } .bg-amber-500\\/20 { background-color: rgba(245, 158, 11, 0.2) !important; } .text-amber-400 { color: #f59e0b !important; }
         .text-emerald-300 { color: #6ee7b7 !important; }
+
+        /* Add connector lines between steps on desktop */
+        @media (min-width: 768px) {
+          .relative.group.md\\:flex-1:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            right: -50%;
+            width: 100%;
+            height: 1.5px;
+            background-color: rgba(99, 102, 241, 0.4);
+            z-index: 0;
+          }
+        }
       `}</style>
     </motion.div>
   );
