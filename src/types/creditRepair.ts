@@ -66,6 +66,8 @@ export interface CreditRepairRequest {
   socialSecurityNumber: string;
   packagePrice: number;
   requestRecordExpunction: boolean;
+  referralCode?: string;
+  appliedReferralCode?: string;
   utilityBill: {
     _id: string;
     url: string;

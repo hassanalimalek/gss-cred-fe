@@ -1,6 +1,6 @@
 /**
  * API Types
- * 
+ *
  * This file contains TypeScript interfaces for API requests and responses.
  * Centralizing types makes them reusable across the application.
  */
@@ -13,9 +13,10 @@ export interface CreditRepairRequest {
   email: string;
   phoneNumber: string;
   referralCode?: string;
+  appliedReferralCode?: string;
   address: string;
   socialSecurityNumber: string;
-  dateofBirth: string;
+  dateOfBirth: string;
   utilityBill: string;
   driverLicense: string;
   packageType: string;
@@ -67,4 +68,4 @@ export interface EncryptedPayload {
   encryptedAesKey: string; // RSA-encrypted AES key
   sessionId: string;      // Session ID for key retrieval on the server
   encryptedData: string;  // AES-encrypted JSON string of the entire data object
-} 
+}
