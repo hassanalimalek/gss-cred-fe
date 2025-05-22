@@ -13,10 +13,13 @@ const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "react/no-unescaped-entities": "off",
-      "@typescript-eslint/no-unused-vars": "off",
-      "@typescript-eslint/ban-ts-comment": "off"
+      // Enable rules to catch potential issues
+      "@typescript-eslint/no-explicit-any": "warn", // Warn about 'any' usage but don't break the build
+      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }], // Warn about unused variables
+
+      // Keep these rules disabled for compatibility
+      "react/no-unescaped-entities": "off", // Allow apostrophes in text
+      "@typescript-eslint/ban-ts-comment": "off" // Allow TS comments for edge cases
     }
   }
 ];
