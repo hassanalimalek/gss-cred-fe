@@ -57,15 +57,16 @@ const Header = React.memo(({ phone, email }: HeaderProps) => {
 
           {/* Social media icons */}
           <div className="flex space-x-5">
-            <a href="#" aria-label="LinkedIn" className="text-gray-600 hover:text-blue-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <a href="https://www.linkedin.com/company/gznite-llc" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-gray-600 hover:text-blue-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
               <Linkedin className="w-5 h-5 fill-current" />
             </a>
-            <a href="#" aria-label="Facebook" className="text-gray-600 hover:text-blue-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <a href="https://www.facebook.com/gzniteus" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-gray-600 hover:text-blue-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
               <Facebook className="w-5 h-5 fill-current" />
             </a>
-            <a href="#" aria-label="Twitter" className="text-gray-600 hover:text-blue-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <a href="https://twitter.com/gznite" target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-gray-600 hover:text-blue-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
               <Twitter className="w-5 h-5 fill-current" />
             </a>
+        
           </div>
         </div>
       </div>

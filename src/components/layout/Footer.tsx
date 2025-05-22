@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import Image from "next/image";
 import { footerLinks } from "@/data/footer";
 import { Phone, Mail, FileText, Home, Globe, MessageSquare } from "lucide-react";
@@ -12,20 +11,12 @@ interface FooterLinkProps {
   href: string;
 }
 
-const fadeIn = (direction: "up" | "down" = "up", delay: number = 0) => ({
-  initial: { y: direction === "up" ? 40 : -40, opacity: 0 },
-  animate: { y: 0, opacity: 1 },
-  transition: {
-    duration: 0.8,
-    ease: [0.43, 0.13, 0.23, 0.96],
-    delay,
-  },
-});
+
 
 const FooterLink = ({ icon, text, href }: FooterLinkProps) => {
   // Check if this is the disclosure document link that should open in a new tab
   const isDisclosureLink = href.includes('Disclosure.pdf');
-  
+
   return (
     <a
       href={href}
@@ -56,10 +47,7 @@ export const Footer = () => {
   };
 
   return (
-    <motion.footer 
-      {...fadeIn("up", 0)}
-      className="px-5 pt-16 pb-8 mt-auto bg-sky-950 text-sky-100"
-    >
+    <footer className="px-5 pt-16 pb-8 mt-auto bg-sky-950 text-sky-100">
       <div className="container mx-auto">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           <div className="pr-8">
@@ -90,6 +78,6 @@ export const Footer = () => {
           <p>© {new Date().getFullYear()} Mulligan Credit Repair. All rights reserved.</p>
         </div>
       </div>
-    </motion.footer>
+    </footer>
   );
 };
