@@ -34,13 +34,22 @@ export default function TestimonialsPage() {
                 <div className="p-6 flex flex-col h-full">
                   <div className="flex items-center mb-4">
                     <div className="w-16 h-16 rounded-full overflow-hidden mr-4 relative flex-shrink-0">
-                      <Image
-                        src={testimonial.image}
-                        alt={`${testimonial.name}'s profile picture`}
-                        width={80}
-                        height={80}
-                        className="rounded-full object-cover w-[80px] h-[80px]"
-                      />
+                      {testimonial.image ? (
+                        <Image
+                          src={testimonial.image}
+                          alt={`${testimonial.name}'s profile picture`}
+                          width={80}
+                          height={80}
+                          className="rounded-full object-cover w-[80px] h-[80px]"
+                        />
+                      ) : (
+                        <div
+                          className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xl font-bold"
+                          aria-label={`Avatar for ${testimonial.name}`}
+                        >
+                          {testimonial.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </div>
+                      )}
                     </div>
                     <h3 className="text-xl font-bold text-[#0A142F] font-['PT_Serif']">
                       {testimonial.name}

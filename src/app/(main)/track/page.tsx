@@ -15,10 +15,10 @@ export default function TrackPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showResearchForm, setShowResearchForm] = useState(false);
-  console.log(" --trackingData ",trackingData)
+  const [currentTrackingId, setCurrentTrackingId] = useState<string>('');
   return (
     <main className="bg-gradient-to-b from-gray-50 to-gray-100 min-h-screen py:14 md:py-16">
-      <div className="container mx-auto px-4 max-w-5xl">
+      <div className=" mx-auto px-4 max-w-7xl">
         {!trackingData && !isLoading && (
           <motion.div
             {...fadeIn('up', 0.1)}
@@ -43,6 +43,7 @@ export default function TrackPage() {
               }}
               setIsLoading={setIsLoading}
               setError={setError}
+              setCurrentTrackingId={setCurrentTrackingId}
             />
           </ErrorBoundary>
         )}
@@ -102,6 +103,7 @@ export default function TrackPage() {
                     }}
                     setIsLoading={setIsLoading}
                     setError={setError}
+                    setCurrentTrackingId={setCurrentTrackingId}
                   />
                 </ErrorBoundary>
                 <div className="text-right mt-2">
@@ -116,7 +118,12 @@ export default function TrackPage() {
             )}
             </AnimatePresence>
 
-            <CustomApplicationTracking trackingData={trackingData} />
+            <CustomApplicationTracking
+              trackingData={{
+                ...trackingData,
+                trackingId: currentTrackingId
+              }}
+            />
 
             <motion.div
               className="mt-12 text-center"
