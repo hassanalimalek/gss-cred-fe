@@ -22,8 +22,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
-    // Log to error tracking service in production instead of console
-    // console.error('Uncaught error:', error, errorInfo);
+    // Log to error tracking service in production
   }
 
   public render() {

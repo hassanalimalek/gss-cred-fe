@@ -8,13 +8,13 @@ interface SkeletonProps {
   height?: string;
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({ 
-  className = '', 
-  width = 'w-full', 
-  height = 'h-4' 
+export const Skeleton: React.FC<SkeletonProps> = ({
+  className = '',
+  width = 'w-full',
+  height = 'h-4'
 }) => {
   return (
-    <div 
+    <div
       className={`animate-pulse bg-gray-200 rounded ${width} ${height} ${className}`}
       aria-hidden="true"
     />
@@ -23,7 +23,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
 export const CardSkeleton: React.FC = () => {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-gray-200 animate-pulse">
+    <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-gray-200">
       <div className="flex items-center justify-between">
         <div className="w-full">
           <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
