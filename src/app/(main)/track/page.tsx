@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { TrackingForm } from '@/components/tracking/TrackingForm';
 import type { StatusTrackingResponse } from '@/types/creditRepair';
@@ -11,13 +11,15 @@ import { fadeIn } from '@/utils/animations';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { CustomApplicationTracking } from '@/components/tracking/CustomApplicationTracking';
 
-export default function TrackPage() {
+function TrackPageContent() {
   const searchParams = useSearchParams();
   const [trackingData, setTrackingData] = useState<StatusTrackingResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showResearchForm, setShowResearchForm] = useState(false);
   const [currentTrackingId, setCurrentTrackingId] = useState<string>('');
+
+
   
   // Function to handle tracking search
   const handleTrackingSearch = React.useCallback(async (trackingId: string) => {
@@ -181,5 +183,17 @@ export default function TrackPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function TrackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <SectionLoading height="400px" message="Loading tracking..." />
+      </div>
+    }>
+      <TrackPageContent />
+    </Suspense>
   );
 }
