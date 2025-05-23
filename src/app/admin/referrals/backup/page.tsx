@@ -1,29 +1,60 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { MagnifyingGlassIcon, ArrowPathIcon, UsersIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid';
+import CountBadge from '@/components/ui/CountBadge';
+import TableRowSkeleton from '@/components/ui/TableRowSkeleton';
 
-// Referral functionality removed
+interface Referrer {
+  _id: string;
+  fullName: string;
+  email: string;
+  referralCount: number;
+  totalReferralAmount?: number;
+}
+
+interface Stats {
+  totalReferrals: number;
+  topReferrers: Referrer[];
+  totalPages: number;
+}
 
 export default function ReferralsPage() {
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [stats, setStats] = useState<Stats>({
+    totalReferrals: 0,
+    topReferrers: [],
+    totalPages: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Redirect to the admin homepage if someone tries to access this page directly
-  useEffect(() => {
-    router.push('/admin');
-  }, [router]);
+  // Calculate totalPages based on totalReferrals and limit
+  const totalPages = Math.ceil(stats.totalReferrals / limit);
 
-  // Return null or a simple message that will only show briefly before redirect
-  return (
-    <div className="p-8 text-center">
-      <p>Redirecting to dashboard...</p>
-    </div>
+  const debouncedSearchQuery = useMemo(
+    () => searchQuery,
+    [searchQuery]
   );
-}
+
+  const fetchReferralStats = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Your API call here
+    } catch (error) {
+      console.error('Error fetching referral stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchReferralStats();
-  }, [debouncedSearchQuery, page, limit]);
+  }, [fetchReferralStats, debouncedSearchQuery, page, limit]);
 
   const handleViewCustomer = (customerId: string) => {
     router.push(`/admin/customers/${customerId}`);

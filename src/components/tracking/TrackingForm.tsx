@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type { FC } from 'react';
 import { motion } from 'framer-motion';
 import { fadeIn } from '@/utils/animations';
 import { getStatusByTrackingId } from '@/api/tracking';
-import { StatusTrackingResponse } from '@/types/creditRepair';
+import type { StatusTrackingResponse } from '@/types/creditRepair';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 interface TrackingFormProps {
@@ -12,15 +13,17 @@ interface TrackingFormProps {
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setCurrentTrackingId?: React.Dispatch<React.SetStateAction<string>>;
+  initialTrackingId?: string;
 }
 
-export const TrackingForm: React.FC<TrackingFormProps> = ({
+export const TrackingForm: FC<TrackingFormProps> = ({
   setTrackingData,
   setIsLoading,
   setError,
-  setCurrentTrackingId
+  setCurrentTrackingId,
+  initialTrackingId = ''
 }) => {
-  const [trackingId, setTrackingId] = useState('');
+  const [trackingId, setTrackingId] = useState(initialTrackingId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -57,8 +60,9 @@ export const TrackingForm: React.FC<TrackingFormProps> = ({
       if (setCurrentTrackingId) {
         setCurrentTrackingId(trimmedId);
       }
-    } catch (error: any) {
-      setError(error.message || 'Failed to retrieve tracking information');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve tracking information';
+      setError(errorMessage);
       setTrackingData(null);
     } finally {
       setIsSubmitting(false);

@@ -593,8 +593,8 @@ const OnboardingForm = () => {
       driverLicense: {uploading: false, completed: false}
     });
     // Reset referral code related states
-    setReferralCodeStatus("idle");
-    setReferrerName("");
+    // setReferralCodeStatus("idle");
+    // setReferrerName("");
   };
 
   // Create API instance outside the handler for better memory management
