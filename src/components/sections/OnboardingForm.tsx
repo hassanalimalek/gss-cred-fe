@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { PaymentInputsContainer, usePaymentInputs } from "react-payment-inputs";
-import { submitCreditRepairRequest, getEncryptionKeys, validateReferralCode } from "../../api";
+// Referral functionality removed
+import { submitCreditRepairRequest, getEncryptionKeys } from "../../api";
+// import { validateReferralCode } from "../../api";
 import { showSuccessToast, showErrorToast } from "../../utils/toast";
 import axios from 'axios';
 import { encryptFormData } from '../../utils/encryption';
@@ -170,7 +172,8 @@ interface FormData {
   email: string;
   phone: string;
   ssn: string;
-  referralCode: string;
+  // Referral functionality removed
+  // referralCode: string;
   package: string;
   utilityBill: FileList | null;
   driverLicense: FileList | null;
@@ -263,8 +266,10 @@ const OnboardingForm = () => {
     utilityBill: {uploading: false, completed: false},
     driverLicense: {uploading: false, completed: false}
   });
-  const [referralCodeStatus, setReferralCodeStatus] = useState<"idle" | "validating" | "valid" | "invalid">("idle");
-  const [referrerName, setReferrerName] = useState<string>("");
+  // Referral functionality removed
+  // const [referralCodeStatus, setReferralCodeStatus] = useState<"idle" | "validating" | "valid" | "invalid">("idle");
+  // Referral functionality removed
+  // const [referrerName, setReferrerName] = useState<string>("");
 
   // Payment card state
   const [cardNumber, setCardNumber] = useState("");
@@ -353,6 +358,8 @@ const OnboardingForm = () => {
         [name]: value,
       });
 
+      // Referral functionality removed
+      /*
       // If referral code field is changed
       if (name === 'referralCode') {
         if (value.trim()) {
@@ -370,9 +377,12 @@ const OnboardingForm = () => {
           });
         }
       }
+      */
     }
   };
 
+  // Referral functionality removed
+  /*
   // Validate referral code with debounce
   const handleReferralCodeChange = useMemo(() => {
     const validateCode = async (code: string) => {
@@ -426,6 +436,7 @@ const OnboardingForm = () => {
       debounceTimer = setTimeout(() => validateCode(code), 500);
     };
   }, []);
+  */
 
   const handleFileSelect = (fieldName: string) => (files: FileList | null) => {
     if (files && files.length > 0) {
@@ -862,8 +873,9 @@ const OnboardingForm = () => {
           fullName: formData.name,
           email: formData.email,
           phoneNumber: formattedPhone,
-          referralCode: formData.referralCode || undefined,
-          appliedReferralCode: referralCodeStatus === 'valid' ? formData.referralCode : undefined,
+          // Referral functionality removed
+          // referralCode: formData.referralCode || undefined,
+          // appliedReferralCode: referralCodeStatus === 'valid' ? formData.referralCode : undefined,
           address: formData.address,
           socialSecurityNumber: ssnDigits,
           dateOfBirth: formData.dateOfBirth,
@@ -886,9 +898,12 @@ const OnboardingForm = () => {
         setMessage("Application submitted successfully! We'll get back to you soon.");
         showSuccessToast("Your credit repair application has been submitted successfully! We'll be in touch soon.");
 
+        // Referral functionality removed
+        /*
         // Immediately reset referral code related states to prevent "Referred by" text from showing
         setReferralCodeStatus("idle");
         setReferrerName("");
+        */
 
         // Optional: Reset form after success
         setTimeout(() => {
@@ -1518,7 +1533,7 @@ const OnboardingForm = () => {
                 </div>
 
                 {/* Referral Code Field */}
-                <div className="mt-6">
+                {/* <div className="mt-6">
                   <label className="block mb-2 font-medium text-sky-950">
                     Referral Code <span className="text-sm font-normal text-gray-500">(Optional)</span>
                   </label>
@@ -1555,7 +1570,7 @@ const OnboardingForm = () => {
                     {referralCodeStatus === 'invalid' && (
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-600">
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path>
+                          <path fillRule="evenodd" d="M6 18L18 6M6 6l12 12" clipRule="evenodd"></path>
                         </svg>
                       </div>
                     )}
@@ -1568,7 +1583,7 @@ const OnboardingForm = () => {
                   {errors.referralCode && (
                     <p className="mt-1 text-sm text-red-500">{errors.referralCode}</p>
                   )}
-                </div>
+                </div> */}
               </div>
             </div>
           </div>

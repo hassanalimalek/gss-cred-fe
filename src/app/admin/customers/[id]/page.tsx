@@ -17,7 +17,6 @@ import { DetailPageSkeleton } from '@/components/common/Skeleton';
 import { StatusUpdateModal } from '@/components/admin/StatusUpdateModal';
 import { CreditRepairRequest } from '@/types/creditRepair';
 import StatusBadge from '@/components/common/StatusBadge';
-import { getCustomerReferralCode, getCustomerReferrals } from '@/api';
 
 export default function CustomerDetail() {
   const params = useParams();
@@ -28,24 +27,7 @@ export default function CustomerDetail() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
-  const [referralCode, setReferralCode] = useState<string>('');
-  const [isLoadingReferralCode, setIsLoadingReferralCode] = useState(false);
-  const [referrals, setReferrals] = useState<Array<{
-    _id: string;
-    fullName: string;
-    email: string;
-    signupDate: string;
-    creditRepairRequests: number;
-    package?: number;
-    allPackages?: Array<{
-      packagePrice: number;
-    }>;
-    totalPackageAmount?: number;
-  }>>([]);
-  const [isLoadingReferrals, setIsLoadingReferrals] = useState(false);
-  const [isReferralCodeCopied, setIsReferralCodeCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'credit-repair' | 'referrals' | 'payments'>('credit-repair');
-  const [referralSearch, setReferralSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'credit-repair' | 'payments'>('credit-repair');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 5;
@@ -90,20 +72,6 @@ export default function CustomerDetail() {
     }
   };
 
-  // Function to copy referral code to clipboard
-  const copyReferralCode = () => {
-    if (referralCode) {
-      navigator.clipboard.writeText(referralCode)
-        .then(() => {
-          setIsReferralCodeCopied(true);
-          setTimeout(() => setIsReferralCodeCopied(false), 3000);
-        })
-        .catch(err => {
-          console.error('Failed to copy referral code:', err);
-        });
-    }
-  };
-
   // Fetch customer data
   useEffect(() => {
     const fetchCustomer = async () => {
@@ -131,57 +99,6 @@ export default function CustomerDetail() {
 
     fetchCustomer();
   }, [id]); // Depend on 'id' to refetch if it changes
-
-  // Fetch referral code
-  useEffect(() => {
-    const fetchReferralCode = async () => {
-      if (!id) return;
-
-      try {
-        setIsLoadingReferralCode(true);
-        const response = await getCustomerReferralCode(id);
-        setReferralCode(response.referralCode);
-      } catch (error) {
-        console.error('Error fetching referral code:', error);
-        setReferralCode('');
-      } finally {
-        setIsLoadingReferralCode(false);
-      }
-    };
-
-    fetchReferralCode();
-  }, [id]);
-
-  // Fetch referrals with search and pagination
-  useEffect(() => {
-    const fetchReferrals = async () => {
-      if (!id) return;
-
-      try {
-        setIsLoadingReferrals(true);
-        const response = await getCustomerReferrals(id, referralSearch, currentPage, itemsPerPage);
-        setReferrals(response.referrals);
-
-        // Update pagination state if available
-        if (response.pagination) {
-          setTotalPages(response.pagination.totalPages);
-          // We don't need to track total items anymore
-        }
-      } catch (error) {
-        console.error('Error fetching referrals:', error);
-        setReferrals([]);
-      } finally {
-        setIsLoadingReferrals(false);
-      }
-    };
-
-    // Use debounce for search to avoid too many API calls
-    const timer = setTimeout(() => {
-      fetchReferrals();
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [id, referralSearch, currentPage, itemsPerPage]);
 
   const handleBack = () => {
     router.back();
@@ -304,17 +221,6 @@ export default function CustomerDetail() {
             >
               <DocumentIcon className="h-5 w-5 inline mr-2 -mt-0.5" />
               Credit Repair Requests
-            </button>
-            <button
-              onClick={() => setActiveTab('referrals')}
-              className={`py-4 px-6 font-medium text-sm border-b-2 ${
-                activeTab === 'referrals'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } transition-colors`}
-            >
-              <UsersIcon className="h-5 w-5 inline mr-2 -mt-0.5" />
-              Referral Detail
             </button>
             <button
               onClick={() => setActiveTab('payments')}
@@ -491,192 +397,6 @@ export default function CustomerDetail() {
                   </div>
                 </div>
               </>
-            )}
-          </div>
-        )}
-
-        {/* Referral Detail Tab */}
-        {activeTab === 'referrals' && (
-          <div className="mb-8">
-            <div className="flex items-center mb-4">
-              <UsersIcon className="h-5 w-5 mr-2 text-gray-500" />
-              <h2 className="text-lg font-medium text-gray-900">Referral Information</h2>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4">
-                <div>
-                  <h3 className="text-md font-medium text-gray-900 mb-3">Referral Code</h3>
-
-                  {isLoadingReferralCode ? (
-                    <div className="h-10 bg-gray-200 animate-pulse rounded w-1/3"></div>
-                  ) : referralCode ? (
-                    <div className="flex items-center">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 font-mono text-blue-800 mr-3">
-                        {referralCode}
-                      </div>
-                      <button
-                        onClick={copyReferralCode}
-                        className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
-                          isReferralCodeCopied
-                            ? 'bg-green-100 text-green-800 border border-green-200'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-                        }`}
-                      >
-                        {isReferralCodeCopied ? (
-                          <>
-                            <CheckIcon className="h-4 w-4 mr-1" />
-                            Copied
-                          </>
-                        ) : (
-                          <>
-                            <ClipboardDocumentIcon className="h-4 w-4 mr-1" />
-                            Copy
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-gray-500">No referral code assigned</p>
-                  )}
-                </div>
-
-                <div className="mt-4 md:mt-0">
-                  <h3 className="text-md font-medium text-gray-900 mb-2">Total Referral Amount</h3>
-                  <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-green-800 font-semibold">
-                    ${isLoadingReferrals ? '...' : referrals.reduce((sum, user) => sum + (user.totalPackageAmount || 0), 0).toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <h3 className="text-md font-medium text-gray-900 mb-3">Referred Customers</h3>
-
-            {/* Search input */}
-            <div className="mb-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search by name or email..."
-                  className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
-                  value={referralSearch}
-                  onChange={(e) => setReferralSearch(e.target.value)}
-                />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {isLoadingReferrals ? (
-              <div className="space-y-3">
-                {[1, 2].map(i => (
-                  <div key={i} className="h-12 bg-gray-200 animate-pulse rounded"></div>
-                ))}
-              </div>
-            ) : referrals.length > 0 ? (
-              <>
-                <div className="overflow-hidden rounded-lg border border-gray-200">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Package</th>
-
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requests</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {referrals.map((user) => (
-                          <tr key={user._id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <button
-                                onClick={() => router.push(`/admin/customers/${user._id}`)}
-                                className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                              >
-                                {user.fullName}
-                              </button>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="text-sm text-gray-500">{user.email}</div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="text-sm text-gray-500">
-                                {new Date(user.signupDate).toLocaleString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              {user.package ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  ${user.package}
-                                </span>
-                              ) : (
-                                <span className="text-sm text-gray-500">No package</span>
-                              )}
-                            </td>
-
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {user.creditRepairRequests}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                <div className="flex justify-between items-center mt-4">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className={`px-3 py-1 rounded-md ${
-                      currentPage === 1
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    Previous
-                  </button>
-                  <span className="text-sm text-gray-600">
-                    Page {currentPage} of {totalPages || 1}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage >= totalPages}
-                    className={`px-3 py-1 rounded-md ${
-                      currentPage >= totalPages
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    Next
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="p-6 text-center border border-gray-200 rounded-lg bg-gray-50">
-                <UsersIcon className="h-10 w-10 mx-auto text-gray-400 mb-3" />
-                <h3 className="text-md font-medium text-gray-900 mb-1">
-                  {referralSearch ? 'No matching referrals found' : 'No referrals yet'}
-                </h3>
-                <p className="text-gray-500">
-                  {referralSearch
-                    ? 'Try a different search term or clear the search'
-                    : 'This customer hasn\'t referred anyone yet.'}
-                </p>
-              </div>
             )}
           </div>
         )}

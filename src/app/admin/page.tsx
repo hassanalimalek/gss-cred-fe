@@ -11,7 +11,8 @@ import {
 import { getCreditRepairRequests, getCreditRepairStatistics, CreditRepairRequest } from '@/api/admin';
 import { CardSkeleton, TableRowSkeleton } from '@/components/common/Skeleton';
 import { ECreditRepairStatus, CREDIT_REPAIR_STATUS_TEXT } from '@/types/creditRepair';
-import { ReferralStats } from '@/components/admin/ReferralStats';
+// Referral functionality removed
+// import { ReferralStats } from '@/components/admin/ReferralStats';
 
 // Dashboard stat card component
 interface StatCardProps {
@@ -302,8 +303,8 @@ export default function AdminDashboard() {
         <RecentRequests requests={requests} isLoading={isLoading} />
       </div>
 
-      {/* Referral Statistics */}
-      <ReferralStats className="mt-6" />
+      {/* Referral Statistics - Removed */}
+      {/* <ReferralStats className="mt-6" /> */}
     </div>
   );
 }

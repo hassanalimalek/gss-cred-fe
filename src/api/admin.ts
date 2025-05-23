@@ -67,8 +67,9 @@ export interface Customer {
   phoneNumber: string;
   address: string;
   socialSecurityNumber: string;
+  // Primary field - this is the standard property name to use throughout the app
   dateOfBirth: string;
-  // Keep dateofBirth for backward compatibility
+  // For backward compatibility with older API responses - marked as deprecated
   dateofBirth?: string;
   referralCode?: string;
   referredBy?: string;
@@ -272,7 +273,7 @@ export const getCustomerById = async (id: string): Promise<Customer> => {
     const response = await api.get(`/admin/customers/${id}`);
     return response.data;
   } catch (error) {
-    return handleApiError(error, 'Failed to fetch customer details');
+    return handleApiError(error, 'Failed to fetch customer');
   }
 };
 

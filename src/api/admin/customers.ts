@@ -75,6 +75,11 @@ export const getCustomers = async (
  * Get a customer by ID
  */
 export const getCustomerById = async (id: string): Promise<Customer> => {
-  const response = await apiClient.get(`/admin/customers/${id}`);
+  // Request customer data with pre-signed URLs for S3 objects
+  const response = await apiClient.get(`/admin/customers/${id}`, {
+    params: {
+      presignedUrls: true // Add a query parameter to tell the backend to generate pre-signed URLs
+    }
+  });
   return response.data;
 };
