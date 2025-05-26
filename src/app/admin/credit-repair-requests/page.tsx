@@ -43,6 +43,7 @@ export default function CreditRepairRequestsPage() {
   const fetchRequests = async () => {
     setIsLoading(true);
     try {
+      console.log('Fetching with filterStatus:', filterStatus, 'Type:', typeof filterStatus);
       const response = await getCreditRepairRequests(
         page,
         limit,
@@ -51,10 +52,11 @@ export default function CreditRepairRequestsPage() {
         filterStatus,
         debouncedSearchQuery
       );
+      console.log('Response received:', response);
       setRequests(response.data);
       setTotal(response.total);
     } catch (error) {
-      // Silently handle error
+      console.error('Error fetching requests:', error);
     } finally {
       setIsLoading(false);
     }
@@ -116,7 +118,28 @@ export default function CreditRepairRequestsPage() {
   // Handle filtering
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    setFilterStatus(value === '' ? undefined : parseInt(value));
+    
+    // Only set a filter value if something is selected
+    if (value === "") {
+      setFilterStatus(undefined);
+      console.log('Filter status cleared');
+    } else {
+      // Convert to number for proper comparison
+      const numValue = Number(value);
+      setFilterStatus(numValue);
+      console.log('Filter status set to:', numValue, 'Type:', typeof numValue);
+      
+      // Direct API call for debugging
+      fetch(`http://localhost:3005/admin/credit-repair-requests?filterStatus=${value}`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('Direct API call result:', data);
+        })
+        .catch(err => {
+          console.error('Direct API call error:', err);
+        });
+    }
+    
     setPage(1); // Reset to first page when filter changes
   };
 
@@ -197,7 +220,7 @@ export default function CreditRepairRequestsPage() {
           <FunnelIcon className="h-5 w-5 text-gray-400 mr-2" />
           <select
             className="block w-full pl-3 pr-10 py-2 text-base text-black border border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
-            value={filterStatus || ''}
+            value={filterStatus !== undefined ? filterStatus.toString() : ''}
             onChange={handleFilterChange}
           >
             <option value="">All Statuses</option>
@@ -284,19 +307,26 @@ export default function CreditRepairRequestsPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="text-sm text-gray-900 mr-2">{request.trackingId}</div>
-                            <button
-                              onClick={(e) => copyTrackingId(e, request.trackingId)}
-                              className="p-1.5 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors"
-                              aria-label="Copy tracking ID"
-                              title="Copy tracking ID"
-                            >
-                              {copiedId === request.trackingId ? (
-                                <CheckIcon className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <DocumentDuplicateIcon className="h-4 w-4 text-primary" />
-                              )}
-                            </button>
+                            {request.trackingId ? (
+                              <>
+                                <div className="text-sm text-gray-900 mr-2">{request.trackingId}</div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => copyTrackingId(e, request.trackingId)}
+                                  className="p-1.5 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors"
+                                  aria-label="Copy tracking ID"
+                                  title="Copy tracking ID"
+                                >
+                                  {copiedId === request.trackingId ? (
+                                    <CheckIcon className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <DocumentDuplicateIcon className="h-4 w-4 text-primary" />
+                                  )}
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">No Tracking ID</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -317,12 +347,53 @@ export default function CreditRepairRequestsPage() {
                           })}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={(e) => handleUpdateStatusClick(e, request)}
-                            className="text-primary hover:text-primary-hover px-3 py-1 border border-primary rounded-md hover:bg-primary hover:bg-opacity-10 transition-colors"
-                          >
-                            Update Status
-                          </button>
+                          <div className="relative inline-block group">
+                            <button
+                              type="button"
+                              onClick={(e) => handleUpdateStatusClick(e, request)}
+                              disabled={!request.trackingId}
+                              className={`px-3 py-1 border rounded-md transition-colors ${
+                                !request.trackingId
+                                  ? 'text-gray-400 border-gray-300 cursor-not-allowed group-hover:relative'
+                                  : 'text-primary border-primary hover:text-primary-hover hover:bg-primary hover:bg-opacity-10'
+                              }`}
+                              onMouseEnter={(e) => {
+                                if (!request.trackingId) {
+                                  const buttonRect = e.currentTarget.getBoundingClientRect();
+                                  const tooltip = e.currentTarget.nextElementSibling as HTMLElement;
+                                  if (tooltip) {
+                                    tooltip.style.display = 'block';
+                                    tooltip.style.top = `${window.scrollY + buttonRect.top - 10}px`;
+                                    tooltip.style.left = `${buttonRect.left + buttonRect.width / 2}px`;
+                                    tooltip.style.transform = 'translateX(-50%) translateY(-100%)';
+                                  }
+                                }
+                              }}
+                              onMouseLeave={() => {
+                                const tooltip = document.querySelector('.status-tooltip') as HTMLElement | null;
+                                if (tooltip) {
+                                  tooltip.style.display = 'none';
+                                }
+                              }}
+                            >
+                              Update Status
+                            </button>
+                            {!request.trackingId && (
+                              <div 
+                                className="fixed z-50 hidden status-tooltip w-64 p-3 text-sm text-white bg-gray-900 rounded shadow-lg"
+                                style={{
+                                  display: 'none',
+                                  transform: 'translateX(-50%) translateY(-100%)',
+                                  pointerEvents: 'none'
+                                }}
+                              >
+                                <div className="relative">
+                                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-900 rotate-45" />
+                                  <p>Cannot update status without a tracking ID. Please add a tracking ID first.</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
