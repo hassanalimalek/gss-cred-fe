@@ -2,8 +2,9 @@
 
 import React, { useState, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
-import { CreditRepairRequest, updateCreditRepairStatus } from '@/api/admin';
+import { XMarkIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import type { CreditRepairRequest } from '@/api/admin';
+import { updateCreditRepairStatus } from '@/api/admin';
 import {
   ECreditRepairStatus,
   CREDIT_REPAIR_STATUS_TEXT,
@@ -41,7 +42,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
   }, [request]);
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedStatus(parseInt(e.target.value));
+    setSelectedStatus(Number.parseInt(e.target.value, 10));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,9 +62,9 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const updateData = {
+      const updateData: { newStatus: number; userNotes?: string } = {
         newStatus: selectedStatus,
-      } as any; // Using any to avoid TypeScript errors
+      };
 
       // Only include userNotes if it's not empty
       const trimmedNotes = userNotes.trim();
@@ -86,9 +87,9 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const updateData = {
+      const updateData: { newStatus: number; userNotes?: string } = {
         newStatus: ECreditRepairStatus.REQUEST_DENIED,
-      } as any; // Using any to avoid TypeScript errors
+      };
 
       // Only include userNotes if it's not empty
       const trimmedNotes = userNotes.trim();
@@ -182,12 +183,18 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                       <p className="text-sm text-gray-900">{request.email}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Phone</p>
-                      <p className="text-sm text-gray-900">{request.phoneNumber}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Tracking ID</p>
-                      <p className="text-sm text-gray-900">{request.trackingId}</p>
+                      <div className="flex items-center">
+                        <p className="text-sm font-medium text-gray-500">Tracking ID</p>
+                        {!request.trackingId && (
+                          <InformationCircleIcon 
+                            className="ml-1 h-4 w-4 text-yellow-500" 
+                            title="A tracking ID is required to update status"
+                          />
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-900">
+                        {request.trackingId || 'Not assigned'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-500">Current Status</p>
@@ -277,17 +284,31 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                       >
                         Cancel
                       </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md shadow-sm hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                        disabled={isSubmitting || selectedStatus === request.currentStatus}
-                      >
-                        {isSubmitting ? (
-                          <LoadingSpinner size="sm" color="white" />
-                        ) : (
-                          'Update Status'
+                      <div className="relative group">
+                        <button
+                          type="submit"
+                          className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
+                            !request.trackingId 
+                              ? 'bg-gray-400 cursor-not-allowed' 
+                              : 'bg-primary hover:bg-primary-hover'
+                          }`}
+                          disabled={isSubmitting || selectedStatus === request.currentStatus || !request.trackingId}
+                        >
+                          {isSubmitting ? (
+                            <LoadingSpinner size="sm" color="white" />
+                          ) : (
+                            'Update Status'
+                          )}
+                        </button>
+                        {!request.trackingId && (
+                          <div className="absolute z-50 invisible group-hover:visible w-64 p-3 text-sm text-white bg-gray-900 rounded shadow-lg left-1/2 -translate-x-1/2 -top-2 -translate-y-full">
+                            <div className="relative">
+                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-900 rotate-45" />
+                              <p>Cannot update status without a tracking ID.</p>
+                            </div>
+                          </div>
                         )}
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </form>
@@ -346,8 +367,8 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                 <div className="mt-4">
                   <div className="flow-root">
                     <ul className="-mb-8">
-                      {request.statusHistory.map((historyItem, index) => (
-                        <li key={index}>
+                        {request.statusHistory.map((historyItem, index) => (
+                        <li key={`${historyItem.status}-${historyItem.timestamp}-${index}`}>
                           <div className="relative pb-8">
                             {index !== request.statusHistory.length - 1 ? (
                               <span

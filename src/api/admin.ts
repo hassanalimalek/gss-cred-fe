@@ -151,7 +151,9 @@ export const getCreditRepairRequests = async (
     };
 
     if (filterStatus !== undefined) {
-      params.filterStatus = filterStatus;
+      // Try sending as string to match how it might be stored in DB
+      params.filterStatus = String(filterStatus);
+      console.log('Sending filterStatus as string:', params.filterStatus, 'Type:', typeof params.filterStatus);
     }
 
     if (search && search.trim() !== '') {
