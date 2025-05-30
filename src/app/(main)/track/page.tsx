@@ -189,7 +189,7 @@ function TrackPageContent() {
 export default function TrackPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <SectionLoading height="400px" message="Loading tracking..." />
       </div>
     }>
