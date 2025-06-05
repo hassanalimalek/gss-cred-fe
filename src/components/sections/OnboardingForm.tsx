@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { PaymentInputsContainer, usePaymentInputs } from "react-payment-inputs";
-// Referral functionality removed
 import { submitCreditRepairRequest, getEncryptionKeys } from "../../api";
-// import { validateReferralCode } from "../../api";
+import { validateReferralCode } from "../../api";
 import { showSuccessToast, showErrorToast } from "../../utils/toast";
 import axios from 'axios';
 import { encryptFormData } from '../../utils/encryption';
@@ -166,21 +165,22 @@ const CreditCardPreview: React.FC<CreditCardPreviewProps> = ({ cardNumber, expir
   );
 };
 
-// Rest of your component code
 interface FormData {
   name: string;
   email: string;
   phone: string;
   ssn: string;
-  // Referral functionality removed
-  // referralCode: string;
+  referralCode: string;
   package: string;
   utilityBill: FileList | null;
   driverLicense: FileList | null;
   address: string;
   dateOfBirth: string;
-  requestRecordExpunction: boolean;
-  [key: string]: string | FileList | null | boolean;
+  requestRecommendations: boolean;
+  cardNumber: string;
+  expiryDate: string;
+  cvc: string;
+  nameOnCard: string;
 }
 
 interface UploadProgress {
@@ -229,6 +229,18 @@ const Spinner = () => (
   <div className="inline-block animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mr-3" aria-hidden="true"></div>
 );
 
+// Debounce utility function
+const debounce = <T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+): ((...args: Parameters<T>) => void) => {
+  let timeoutId: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay);
+  };
+};
+
 const OnboardingForm = () => {
   const PUBLIC_CLIENT_KEY = process.env.NEXT_PUBLIC_AUTHORIZE_CLIENT_KEY || "";
   const API_LOGIN_ID = process.env.NEXT_PUBLIC_AUTHORIZE_LOGIN_ID || "";
@@ -248,12 +260,16 @@ const OnboardingForm = () => {
     phone: "",
     ssn: "",
     referralCode: "",
-    package: "",
+    package: "basic",
     utilityBill: null,
     driverLicense: null,
     address: "",
     dateOfBirth: "",
-    requestRecordExpunction: false,
+    requestRecommendations: false,
+    cardNumber: "",
+    expiryDate: "",
+    cvc: "",
+    nameOnCard: "",
   });
 
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -266,10 +282,8 @@ const OnboardingForm = () => {
     utilityBill: {uploading: false, completed: false},
     driverLicense: {uploading: false, completed: false}
   });
-  // Referral functionality removed
-  // const [referralCodeStatus, setReferralCodeStatus] = useState<"idle" | "validating" | "valid" | "invalid">("idle");
-  // Referral functionality removed
-  // const [referrerName, setReferrerName] = useState<string>("");
+  const [referralCodeStatus, setReferralCodeStatus] = useState<"idle" | "validating" | "valid" | "invalid">("idle");
+  const [referrerName, setReferrerName] = useState<string>('');
 
   // Payment card state
   const [cardNumber, setCardNumber] = useState("");
@@ -345,72 +359,59 @@ const OnboardingForm = () => {
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
+    const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined;
 
     if (type === 'file') {
       const fileInput = e.target as HTMLInputElement;
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         [name]: fileInput.files,
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-
-      // Referral functionality removed
-      /*
-      // If referral code field is changed
-      if (name === 'referralCode') {
-        if (value.trim()) {
-          // If there's a value, validate it after a short delay
-          handleReferralCodeChange(value);
-        } else {
-          // If field is cleared, reset all referral code related states
-          setReferralCodeStatus('idle');
-          setReferrerName('');
-          // Make sure to clear any errors related to referral code
-          setErrors(prev => {
-            const newErrors = { ...prev };
-            delete newErrors.referralCode;
-            return newErrors;
-          });
-        }
-      }
-      */
+      }));
+      return;
     }
+
+    if (name === 'referralCode') {
+      setFormData(prev => ({ ...prev, [name]: value }));
+      // Debounce referral code validation
+      handleReferralCodeChange(value);
+      return;
+    }
+    
+    // Clear referral code error when user starts typing
+    setReferralCodeStatus('idle');
+    const newErrors = { ...errors };
+    delete newErrors.referralCode;
+    setErrors(newErrors);
+
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    } as FormData));
   };
 
-  // Referral functionality removed
-  /*
-  // Validate referral code with debounce
   const handleReferralCodeChange = useMemo(() => {
-    const validateCode = async (code: string) => {
+    const validate = async (code: string) => {
       if (!code.trim()) {
         setReferralCodeStatus('idle');
+        const newErrors = { ...errors };
+        delete newErrors.referralCode;
+        setErrors(newErrors);
         setReferrerName('');
-        // Clear any referral code errors
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.referralCode;
-          return newErrors;
-        });
         return;
       }
 
       try {
         setReferralCodeStatus('validating');
         const result = await validateReferralCode(code);
-
+        
         if (result.valid) {
           setReferralCodeStatus('valid');
           setReferrerName(result.referrer?.fullName || '');
-          // Clear any referral code errors
-          setErrors(prev => {
-            const newErrors = { ...prev };
-            delete newErrors.referralCode;
-            return newErrors;
-          });
+          
+          // Clear any existing errors
+          const newErrors = { ...errors };
+          delete newErrors.referralCode;
+          setErrors(newErrors);
         } else {
           setReferralCodeStatus('invalid');
           setReferrerName('');
@@ -429,14 +430,8 @@ const OnboardingForm = () => {
       }
     };
 
-    // Debounce function to avoid too many API calls
-    let debounceTimer: NodeJS.Timeout;
-    return (code: string) => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => validateCode(code), 500);
-    };
-  }, []);
-  */
+    return debounce(validate, 500);
+  }, [errors]);
 
   const handleFileSelect = (fieldName: string) => (files: FileList | null) => {
     if (files && files.length > 0) {
@@ -575,12 +570,16 @@ const OnboardingForm = () => {
       phone: "",
       ssn: "",
       referralCode: "",
-      package: "",
+      package: "basic",
       utilityBill: null,
       driverLicense: null,
       address: "",
       dateOfBirth: "",
-      requestRecordExpunction: false,
+      requestRecommendations: false,
+      cardNumber: "",
+      expiryDate: "",
+      cvc: "",
+      nameOnCard: "",
     });
     setCardNumber("");
     setExpiryDate("");
@@ -592,9 +591,8 @@ const OnboardingForm = () => {
       utilityBill: {uploading: false, completed: false},
       driverLicense: {uploading: false, completed: false}
     });
-    // Reset referral code related states
-    // setReferralCodeStatus("idle");
-    // setReferrerName("");
+    setReferralCodeStatus("idle");
+    setReferrerName('');
   };
 
   // Create API instance outside the handler for better memory management
@@ -873,9 +871,8 @@ const OnboardingForm = () => {
           fullName: formData.name,
           email: formData.email,
           phoneNumber: formattedPhone,
-          // Referral functionality removed
-          // referralCode: formData.referralCode || undefined,
-          // appliedReferralCode: referralCodeStatus === 'valid' ? formData.referralCode : undefined,
+          referralCode: formData.referralCode || undefined,
+          appliedReferralCode: referralCodeStatus === 'valid' ? formData.referralCode : undefined,
           address: formData.address,
           socialSecurityNumber: ssnDigits,
           dateOfBirth: formData.dateOfBirth,
@@ -885,7 +882,7 @@ const OnboardingForm = () => {
           packagePrice: packageOptions.find((p) => p.value === formData.package)?.price || 0,
           dataValue: dataValue,
           dataDescriptor: dataDescriptor,
-          requestRecordExpunction: formData.requestRecordExpunction
+          requestRecommendations: formData.requestRecommendations
         };
         // Encrypt the submission data
         const encryptedPayload = encryptFormData(submissionData, publicKey, sessionId);
@@ -897,13 +894,6 @@ const OnboardingForm = () => {
         setStatus("success");
         setMessage("Application submitted successfully! We'll get back to you soon.");
         showSuccessToast("Your credit repair application has been submitted successfully! We'll be in touch soon.");
-
-        // Referral functionality removed
-        /*
-        // Immediately reset referral code related states to prevent "Referred by" text from showing
-        setReferralCodeStatus("idle");
-        setReferrerName("");
-        */
 
         // Optional: Reset form after success
         setTimeout(() => {
@@ -1089,10 +1079,10 @@ const OnboardingForm = () => {
 
   // Helper: Render a more compact drag-and-drop area or the selected file with remove button
   const renderFileUpload = (fieldName: string, label: string, required: boolean = false) => {
-    const fileData = formData[fieldName] as FileList | null;
+    const fileData = (formData as any)[fieldName] as FileList | null;
     const isFileSelected = fileData && fileData.length > 0;
     const inputId = fieldName + "Input";
-    const progress = uploadProgress[fieldName as keyof UploadProgress];
+    const progress = uploadProgress[fieldName];
     const fileUploadState = fileUploads[fieldName];
     const showProgress = isUploading && isFileSelected && (fileUploadState?.uploading || (progress > 0 && progress < 100));
     const error = errors[fieldName];
@@ -1439,11 +1429,11 @@ const OnboardingForm = () => {
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={formData.requestRecordExpunction}
+                      checked={formData.requestRecommendations}
                       onChange={(e) => {
                         setFormData(prev => ({
                           ...prev,
-                          requestRecordExpunction: e.target.checked
+                          requestRecommendations: e.target.checked
                         }));
                       }}
                       className="form-checkbox h-5 w-5 text-[#D09C01] rounded border-gray-300 focus:ring-[#D09C01]"
@@ -1533,7 +1523,7 @@ const OnboardingForm = () => {
                 </div>
 
                 {/* Referral Code Field */}
-                {/* <div className="mt-6">
+                <div className="mt-6">
                   <label className="block mb-2 font-medium text-sky-950">
                     Referral Code <span className="text-sm font-normal text-gray-500">(Optional)</span>
                   </label>
@@ -1567,13 +1557,6 @@ const OnboardingForm = () => {
                         </svg>
                       </div>
                     )}
-                    {referralCodeStatus === 'invalid' && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-600">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M6 18L18 6M6 6l12 12" clipRule="evenodd"></path>
-                        </svg>
-                      </div>
-                    )}
                   </div>
                   {referralCodeStatus === 'valid' && referrerName && (
                     <p className="mt-1 text-sm text-green-600">
@@ -1583,7 +1566,7 @@ const OnboardingForm = () => {
                   {errors.referralCode && (
                     <p className="mt-1 text-sm text-red-500">{errors.referralCode}</p>
                   )}
-                </div> */}
+                </div>
               </div>
             </div>
           </div>
