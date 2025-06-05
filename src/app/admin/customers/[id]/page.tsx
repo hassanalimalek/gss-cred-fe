@@ -10,9 +10,11 @@ import {
   DocumentDuplicateIcon,
   CreditCardIcon,
   UsersIcon,
-  ClipboardDocumentIcon
+  ClipboardDocumentIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 import { getCustomerById, Customer } from '@/api/admin';
+import { getCustomerReferrals } from '@/api';
 import { DetailPageSkeleton } from '@/components/common/Skeleton';
 import { StatusUpdateModal } from '@/components/admin/StatusUpdateModal';
 import { CreditRepairRequest } from '@/types/creditRepair';
@@ -27,7 +29,7 @@ export default function CustomerDetail() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'credit-repair' | 'payments'>('credit-repair');
+  const [activeTab, setActiveTab] = useState<'credit-repair' | 'payments' | 'referrals'>('credit-repair');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 5;
@@ -232,6 +234,17 @@ export default function CustomerDetail() {
             >
               <CreditCardIcon className="h-5 w-5 inline mr-2 -mt-0.5" />
               Payment History
+            </button>
+            <button
+              onClick={() => setActiveTab('referrals')}
+              className={`py-4 px-6 font-medium text-sm border-b-2 ${
+                activeTab === 'referrals'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } transition-colors`}
+            >
+              <UserGroupIcon className="h-5 w-5 inline mr-2 -mt-0.5" />
+              Referrals
             </button>
           </nav>
         </div>
@@ -466,6 +479,88 @@ export default function CustomerDetail() {
           )}
           </div>
         )}
+
+        {/* Referrals Tab */}
+        {activeTab === 'referrals' && (
+          <div className="mb-8">
+            <div className="flex items-center mb-6">
+              <UserGroupIcon className="h-5 w-5 mr-2 text-gray-500" />
+              <h2 className="text-lg font-medium text-gray-900">Referral Information</h2>
+            </div>
+
+            {/* Referral Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              {/* Customer's Referral Code */}
+              <div className="p-4 border border-gray-200 rounded-lg bg-white">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Referral Code</h3>
+                {customer.referralCode ? (
+                  <div className="flex items-center">
+                    <span className="text-lg font-mono font-bold text-gray-900">{customer.referralCode}</span>
+                    <button
+                      onClick={() => copyTrackingId(customer.referralCode!)}
+                      className="ml-2 p-1 text-gray-400 hover:text-gray-600"
+                      title="Copy referral code"
+                    >
+                      {isCopied ? (
+                        <CheckIcon className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <DocumentDuplicateIcon className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-500">No referral code assigned</span>
+                )}
+              </div>
+
+              {/* Total Referrals */}
+              <div className="p-4 border border-gray-200 rounded-lg bg-white">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Total Referrals</h3>
+                <span className="text-2xl font-bold text-blue-600">
+                  {customer.referrals ? customer.referrals.length : 0}
+                </span>
+              </div>
+
+              {/* Referral Value */}
+              <div className="p-4 border border-gray-200 rounded-lg bg-white">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Total Referral Value</h3>
+                <ReferralValue customerId={customer._id} />
+              </div>
+            </div>
+
+            {/* Referred By Information */}
+            {(customer.referredBy || (customer.creditRepairRequests && customer.creditRepairRequests.length > 0 && customer.creditRepairRequests[0].appliedReferralCode)) && (
+              <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-blue-50">
+                <h3 className="text-md font-medium text-gray-800 mb-3">This Customer Was Referred</h3>
+                <div className="flex items-center">
+                  <UsersIcon className="h-5 w-5 text-blue-500 mr-2" />
+                  <span className="text-sm text-gray-900">This customer was referred by another user</span>
+                </div>
+                {customer.creditRepairRequests && customer.creditRepairRequests.length > 0 && customer.creditRepairRequests[0].appliedReferralCode && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      Used Code: {customer.creditRepairRequests[0].appliedReferralCode}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Customers Referred List */}
+            <div className="p-4 border border-gray-200 rounded-lg bg-white">
+              <h3 className="text-md font-medium text-gray-800 mb-4">Customers Referred</h3>
+              {customer.referrals && customer.referrals.length > 0 ? (
+                <ReferralsList customerId={customer._id} />
+              ) : (
+                <div className="text-center py-8">
+                  <UsersIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No referrals yet</h3>
+                  <p className="text-gray-500">This customer hasn't referred anyone yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Status Update Modal */}
@@ -491,5 +586,145 @@ export default function CustomerDetail() {
     </div>
   );
 }
+
+// Add the ReferralsList component before the export
+interface ReferralsListProps {
+  customerId: string;
+}
+
+const ReferralsList: React.FC<ReferralsListProps> = ({ customerId }) => {
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchReferrals = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await getCustomerReferrals(customerId, '', 1, 100);
+        setReferrals(data.referrals || []);
+      } catch (error) {
+        setError('Failed to load referrals');
+        setReferrals([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReferrals();
+  }, [customerId]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="animate-pulse flex items-center space-x-3">
+            <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+            <div className="flex-1 space-y-1">
+              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-500 text-sm">
+        {error}
+      </div>
+    );
+  }
+
+  if (referrals.length === 0) {
+    return (
+      <div className="text-gray-500 text-sm">
+        No referrals found
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {referrals.map((referral) => (
+        <div key={referral._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+              <UserIcon className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">{referral.fullName}</div>
+              <div className="text-xs text-gray-500">{referral.email}</div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-gray-500">
+              Joined {new Date(referral.signupDate).toLocaleDateString()}
+            </div>
+            {referral.totalPackageAmount && referral.totalPackageAmount > 0 && (
+              <div className="text-sm font-medium text-green-600">
+                ${referral.totalPackageAmount.toLocaleString()}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Add the ReferralValue component before ReferralsList
+interface ReferralValueProps {
+  customerId: string;
+}
+
+const ReferralValue: React.FC<ReferralValueProps> = ({ customerId }) => {
+  const [totalValue, setTotalValue] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReferralValue = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getCustomerReferrals(customerId, '', 1, 100); // Get all referrals
+        
+        // Calculate total value from all packages purchased by referred customers
+        let total = 0;
+        data.referrals.forEach(referral => {
+          if (referral.allPackages && referral.allPackages.length > 0) {
+            referral.allPackages.forEach((pkg: any) => {
+              total += pkg.packagePrice || 0;
+            });
+          }
+        });
+        
+        setTotalValue(total);
+      } catch (error) {
+        setTotalValue(0);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReferralValue();
+  }, [customerId]);
+
+  if (isLoading) {
+    return (
+      <div className="animate-pulse">
+        <div className="h-8 w-16 bg-gray-200 rounded"></div>
+      </div>
+    );
+  }
+
+  return (
+    <span className="text-2xl font-bold text-green-600">
+      ${totalValue.toFixed(2)}
+    </span>
+  );
+};
 
 

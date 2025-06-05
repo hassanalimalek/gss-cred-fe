@@ -66,15 +66,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen }) => {
       href: '/admin/customers',
       icon: <UsersIcon className="h-5 w-5" />,
       text: 'Customers'
-    }
-    // Referral functionality removed
-    /*
+    },
     {
       href: '/admin/referrals',
       icon: <UserGroupIcon className="h-5 w-5" />,
       text: 'Referrals'
     }
-    */
   ];
 
   return (
