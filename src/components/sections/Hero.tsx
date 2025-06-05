@@ -60,7 +60,7 @@ export const Hero = () => {
       {/* What we do section */}
       <motion.h2 
         {...fadeIn("up", 0.5)}
-        className="mt-16 text-3xl sm:text-4xl lg:text-5xl text-center text-sky-950 font-['PT_Serif'] px-4"
+        className="mt-20 text-2xl sm:text-3xl lg:text-4xl text-center text-sky-950 font-['PT_Serif'] px-4"
       >
         What we do
       </motion.h2>
@@ -85,7 +85,7 @@ export const Hero = () => {
       {/* How to enroll section */}
       <motion.h2 
         {...fadeIn("up", 0.7)}
-        className="mt-16 text-3xl sm:text-4xl lg:text-5xl text-center text-sky-950 font-['PT_Serif'] px-4"
+        className="mt-16 text-2xl sm:text-3xl lg:text-4xl text-center text-sky-950 font-['PT_Serif'] px-4"
       >
         How to enroll
       </motion.h2>
