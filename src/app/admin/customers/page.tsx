@@ -7,17 +7,26 @@ import {
   MagnifyingGlassIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  FunnelIcon,
   ArrowPathIcon,
-  UserIcon
+  CurrencyDollarIcon,
+  UserGroupIcon,
+  ClipboardDocumentListIcon,
+  DocumentDuplicateIcon,
+  CheckIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
-import { getCustomers, Customer } from '@/api/admin';
+import { getCustomers, Customer, exportCustomersToCsv } from '@/api/admin';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { TableRowSkeleton } from '@/components/common/Skeleton';
-import { UserGroupIcon } from '@heroicons/react/24/solid';
+import StatusBadge from '@/components/common/StatusBadge';
 import CountBadge from '@/components/common/CountBadge';
+import { showErrorToast, showSuccessToast } from '@/utils/toast';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
@@ -29,21 +38,53 @@ export default function CustomersPage() {
 
   const router = useRouter();
 
+  // Helper function to format numbers with commas
+  const formatNumber = (num: number): string => {
+    return num.toLocaleString();
+  };
+
+  // Handle CSV export
+  const handleExportToCsv = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await exportCustomersToCsv(debouncedSearchQuery);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `customers_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      showSuccessToast('CSV export completed successfully!');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      showErrorToast('Failed to export CSV. Please try again or use date filters to reduce the dataset size.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Fetch customers
   const fetchCustomers = async () => {
     setIsLoading(true);
     try {
-      const response = await getCustomers(
-        page,
-        limit,
-        sortBy,
-        sortOrder,
-        debouncedSearchQuery
-      );
+      const response = await getCustomers(page, limit, sortBy, sortOrder, debouncedSearchQuery);
+      console.log('Customers response:', response);
+      console.log('Customers pagination calculations:', {
+        total: response.total,
+        limit: limit,
+        currentPage: page,
+        calculatedTotalPages: Math.ceil(response.total / limit)
+      });
       setCustomers(response.data);
       setTotal(response.total);
     } catch (error) {
-      // Silently handle error
+      console.error('Error fetching customers:', error);
+      showErrorToast('Failed to fetch customers. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -75,15 +116,27 @@ export default function CustomersPage() {
   };
 
   // Handle pagination
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  
+  // Ensure current page is within valid range
+  const validatedPage = Math.max(1, Math.min(page, totalPages));
+  
+  // Update page if it's out of range
+  useEffect(() => {
+    if (page !== validatedPage && total > 0) {
+      setPage(validatedPage);
+    }
+  }, [page, validatedPage, total]);
+
   const handlePreviousPage = () => {
-    if (page > 1) {
-      setPage(page - 1);
+    if (validatedPage > 1) {
+      setPage(validatedPage - 1);
     }
   };
 
   const handleNextPage = () => {
-    if (page * limit < total) {
-      setPage(page + 1);
+    if (validatedPage < totalPages) {
+      setPage(validatedPage + 1);
     }
   };
 
@@ -105,6 +158,18 @@ export default function CustomersPage() {
             <span className="text-sm text-gray-500 mr-2">Total:</span>
             <CountBadge count={total} />
           </div>
+          <button
+            onClick={handleExportToCsv}
+            disabled={isExporting}
+            className="flex items-center px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isExporting ? (
+              <LoadingSpinner size="sm" color="white" className="mr-2" />
+            ) : (
+              <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+            )}
+            {isExporting ? 'Exporting' : 'Export CSV'}
+          </button>
           <button
             onClick={fetchCustomers}
             className="flex items-center px-3 py-2 text-sm font-medium text-primary bg-white rounded-md border border-gray-300 hover:bg-gray-50"
@@ -196,7 +261,7 @@ export default function CustomersPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                              <UserIcon className="h-6 w-6 text-gray-500" />
+                              <UserGroupIcon className="h-6 w-6 text-gray-500" />
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">{customer.fullName}</div>
@@ -212,7 +277,7 @@ export default function CustomersPage() {
                           {customer.creditRepairRequests && customer.creditRepairRequests.length > 0 ? (
                             <>
                               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                ${customer.creditRepairRequests[0].packagePrice}
+                                ${customer.creditRepairRequests[0].packagePrice?.toLocaleString() || 'N/A'}
                               </span>
                               <div className="text-xs text-gray-500 mt-1">
                                 {customer.creditRepairRequests[0].requestRecordExpunction ? '+ Record Expunction' : ''}
@@ -265,21 +330,21 @@ export default function CustomersPage() {
                 <div className="flex-1 flex justify-between items-center sm:hidden">
                   <button
                     onClick={handlePreviousPage}
-                    disabled={page === 1}
+                    disabled={validatedPage === 1}
                     className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                      page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
+                      validatedPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     Previous
                   </button>
                   <span className="text-sm text-gray-700">
-                    Page {page} of {Math.ceil(total / limit) || 1}
+                    Page {validatedPage} of {totalPages}
                   </span>
                   <button
                     onClick={handleNextPage}
-                    disabled={page * limit >= total}
+                    disabled={validatedPage === totalPages}
                     className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                      page * limit >= total ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
+                      validatedPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     Next
@@ -288,18 +353,18 @@ export default function CustomersPage() {
                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm text-gray-700">
-                      Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{' '}
-                      <span className="font-medium">{Math.min(page * limit, total)}</span> of{' '}
-                      <span className="font-medium">{total}</span> results
+                      Showing <span className="font-medium">{formatNumber((validatedPage - 1) * limit + 1)}</span> to{' '}
+                      <span className="font-medium">{formatNumber(Math.min(validatedPage * limit, total))}</span> of{' '}
+                      <span className="font-medium">{formatNumber(total)}</span> results
                     </p>
                   </div>
                   <div>
                     <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                       <button
                         onClick={handlePreviousPage}
-                        disabled={page === 1}
+                        disabled={validatedPage === 1}
                         className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
-                          page === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
+                          validatedPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
                         }`}
                       >
                         <span className="sr-only">Previous</span>
@@ -307,13 +372,40 @@ export default function CustomersPage() {
                       </button>
                       {/* Current page number */}
                       <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                        Page {page} of {Math.ceil(total / limit) || 1}
+                        Page {validatedPage} of {totalPages}
                       </span>
+                      
+                      {/* Quick page jump for large datasets */}
+                      {totalPages > 100 && (
+                        <>
+                          <span className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                            |
+                          </span>
+                          <div className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white">
+                            <label htmlFor="customerPageJump" className="text-xs text-gray-700 mr-1">Go to:</label>
+                            <input
+                              id="customerPageJump"
+                              type="number"
+                              min="1"
+                              max={totalPages}
+                              className="w-20 px-1 py-1 text-xs border border-gray-200 rounded text-center text-gray-900"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const newPage = parseInt((e.target as HTMLInputElement).value, 10);
+                                  if (newPage >= 1 && newPage <= totalPages) {
+                                    setPage(newPage);
+                                  }
+                                }
+                              }}
+                            />
+                          </div>
+                        </>
+                      )}
                       <button
                         onClick={handleNextPage}
-                        disabled={page * limit >= total}
+                        disabled={validatedPage === totalPages}
                         className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
-                          page * limit >= total ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
+                          validatedPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
                         }`}
                       >
                         <span className="sr-only">Next</span>

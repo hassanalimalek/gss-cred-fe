@@ -12,19 +12,22 @@ import {
   CurrencyDollarIcon,
   CheckIcon,
   ClipboardDocumentListIcon,
-  DocumentDuplicateIcon
+  DocumentDuplicateIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
-import { getCreditRepairRequests, CreditRepairRequest } from '@/api/admin';
+import { getCreditRepairRequests, CreditRepairRequest, exportCreditRepairRequestsToCsv } from '@/api/admin';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { TableRowSkeleton } from '@/components/common/Skeleton';
 import { StatusUpdateModal } from '@/components/admin/StatusUpdateModal';
 import { CREDIT_REPAIR_STATUS_TEXT } from '@/types/creditRepair';
 import StatusBadge from '@/components/common/StatusBadge';
 import CountBadge from '@/components/common/CountBadge';
+import { showErrorToast, showSuccessToast } from '@/utils/toast';
 
 export default function CreditRepairRequestsPage() {
   const [requests, setRequests] = useState<CreditRepairRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
@@ -38,6 +41,11 @@ export default function CreditRepairRequestsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const router = useRouter();
+
+  // Helper function to format numbers with commas
+  const formatNumber = (num: number): string => {
+    return num.toLocaleString();
+  };
 
   // Fetch requests
   const fetchRequests = async () => {
@@ -53,10 +61,17 @@ export default function CreditRepairRequestsPage() {
         debouncedSearchQuery
       );
       console.log('Response received:', response);
+      console.log('Pagination calculations:', {
+        total: response.total,
+        limit: limit,
+        currentPage: page,
+        calculatedTotalPages: Math.ceil(response.total / limit)
+      });
       setRequests(response.data);
       setTotal(response.total);
     } catch (error) {
       console.error('Error fetching requests:', error);
+      showErrorToast('Failed to fetch credit repair requests. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -91,17 +106,27 @@ export default function CreditRepairRequestsPage() {
   };
 
   // Handle pagination
-  const totalPages = Math.ceil(total / limit);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  
+  // Ensure current page is within valid range
+  const validatedPage = Math.max(1, Math.min(page, totalPages));
+  
+  // Update page if it's out of range
+  useEffect(() => {
+    if (page !== validatedPage && total > 0) {
+      setPage(validatedPage);
+    }
+  }, [page, validatedPage, total]);
 
   const handlePreviousPage = () => {
-    if (page > 1) {
-      setPage(page - 1);
+    if (validatedPage > 1) {
+      setPage(validatedPage - 1);
     }
   };
 
   const handleNextPage = () => {
-    if (page < totalPages) {
-      setPage(page + 1);
+    if (validatedPage < totalPages) {
+      setPage(validatedPage + 1);
     }
   };
 
@@ -176,7 +201,33 @@ export default function CreditRepairRequestsPage() {
     fetchRequests();
   };
 
-
+  // Handle CSV export
+  const handleExportToCsv = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await exportCreditRepairRequestsToCsv(
+        filterStatus,
+        debouncedSearchQuery
+      );
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `credit_repair_requests_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      showSuccessToast('CSV export completed successfully!');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      showErrorToast('Failed to export CSV. Please try again or use date filters to reduce the dataset size.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -189,6 +240,18 @@ export default function CreditRepairRequestsPage() {
             <span className="text-sm text-gray-500 mr-2">Total:</span>
             <CountBadge count={total} />
           </div>
+          <button
+            onClick={handleExportToCsv}
+            disabled={isExporting}
+            className="flex items-center px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isExporting ? (
+              <LoadingSpinner size="sm" color="white" className="mr-2" />
+            ) : (
+              <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+            )}
+            {isExporting ? 'Exporting' : 'Export CSV'}
+          </button>
           <button
             onClick={fetchRequests}
             className="flex items-center px-3 py-2 text-sm font-medium text-primary bg-white rounded-md border border-gray-300 hover:bg-gray-50"
@@ -331,7 +394,7 @@ export default function CreditRepairRequestsPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            ${request.packagePrice || 'N/A'}
+                            ${request.packagePrice?.toLocaleString() || 'N/A'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -433,21 +496,21 @@ export default function CreditRepairRequestsPage() {
               <div className="flex-1 flex justify-between items-center sm:hidden">
                 <button
                   onClick={handlePreviousPage}
-                  disabled={page === 1}
+                  disabled={validatedPage === 1}
                   className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                    page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
+                    validatedPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   Previous
                 </button>
                 <span className="text-sm text-gray-700">
-                  Page {page} of {totalPages || 1}
+                  Page {validatedPage} of {totalPages || 1}
                 </span>
                 <button
                   onClick={handleNextPage}
-                  disabled={page >= totalPages}
+                  disabled={validatedPage >= totalPages}
                   className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                    page >= totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
+                    validatedPage >= totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   Next
@@ -456,18 +519,18 @@ export default function CreditRepairRequestsPage() {
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{' '}
-                    <span className="font-medium">{Math.min(page * limit, total)}</span> of{' '}
-                    <span className="font-medium">{total}</span> results
+                    Showing <span className="font-medium">{formatNumber((validatedPage - 1) * limit + 1)}</span> to{' '}
+                    <span className="font-medium">{formatNumber(Math.min(validatedPage * limit, total))}</span> of{' '}
+                    <span className="font-medium">{formatNumber(total)}</span> results
                   </p>
                 </div>
                 <div>
                   <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                     <button
                       onClick={handlePreviousPage}
-                      disabled={page === 1}
+                      disabled={validatedPage === 1}
                       className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
-                        page === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
+                        validatedPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
                       }`}
                     >
                       <span className="sr-only">Previous</span>
@@ -475,13 +538,40 @@ export default function CreditRepairRequestsPage() {
                     </button>
                     {/* Current page number */}
                     <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                      Page {page} of {totalPages || 1}
+                      Page {validatedPage} of {totalPages || 1}
                     </span>
+                    
+                    {/* Quick page jump for large datasets */}
+                    {totalPages > 100 && (
+                      <>
+                        <span className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                          |
+                        </span>
+                        <div className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white">
+                          <label htmlFor="pageJump" className="text-xs text-gray-700 mr-1">Go to:</label>
+                          <input
+                            id="pageJump"
+                            type="number"
+                            min="1"
+                            max={totalPages}
+                            className="w-20 px-1 py-1 text-xs border border-gray-200 rounded text-center text-gray-900"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const newPage = parseInt((e.target as HTMLInputElement).value, 10);
+                                if (newPage >= 1 && newPage <= totalPages) {
+                                  setPage(newPage);
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+                      </>
+                    )}
                     <button
                       onClick={handleNextPage}
-                      disabled={page >= totalPages}
+                      disabled={validatedPage >= totalPages}
                       className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
-                        page >= totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
+                        validatedPage >= totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
                       }`}
                     >
                       <span className="sr-only">Next</span>

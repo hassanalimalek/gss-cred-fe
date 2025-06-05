@@ -1029,8 +1029,12 @@ const OnboardingForm = () => {
             submitErrorMessage = "Cannot connect to payment service. Please check your internet connection and try again.";
             logDebug("Network error detected");
           }
-          // False negative detection - if the message contains "cancel" it might be a false negative
-          else if (error.message.toLowerCase().includes('cancel')) {
+          // False negative detection - only treat as success if it's specifically a payment processor timeout/network issue
+          // NOT if the user explicitly cancelled the transaction
+          else if (error.message.toLowerCase().includes('cancel') && 
+                   (error.message.toLowerCase().includes('timeout') || 
+                    error.message.toLowerCase().includes('network') || 
+                    error.message.toLowerCase().includes('processor'))) {
             setStatus("success");
             setMessage("Your application is being processed. If you don't receive confirmation within 15 minutes, please contact support.");
             showSuccessToast("Your application is being processed. You'll receive a confirmation email shortly.");
@@ -1447,7 +1451,7 @@ const OnboardingForm = () => {
                 <div className="flex items-center mb-4">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#D09C01] mr-2" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
-                    <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M18 9H2v5a2 2 0 012 2h12a2 2 0 012-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
                   </svg>
                   <h3 className="text-lg font-semibold text-gray-900">Payment Information</h3>
                 </div>
