@@ -83,19 +83,29 @@ export const ReferralStats: React.FC<ReferralStatsProps> = ({ className = '' }) 
     value: number | string;
     icon: React.ReactNode;
     color: string;
-  }) => (
-    <div className={`bg-white rounded-lg shadow-sm p-6 border-l-4 ${color}`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-bold text-black mt-1">{value}</p>
-        </div>
-        <div className={`p-3 rounded-full bg-opacity-10 ${color.replace('border-', 'bg-')}`}>
-          {icon}
+  }) => {
+    // Helper function to format numbers with commas
+    const formatValue = (val: number | string): string => {
+      if (typeof val === 'number') {
+        return val.toLocaleString();
+      }
+      return val;
+    };
+
+    return (
+      <div className={`bg-white rounded-lg shadow-sm p-6 border-l-4 ${color}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-500">{title}</p>
+            <p className="text-2xl font-bold text-black mt-1">{formatValue(value)}</p>
+          </div>
+          <div className={`p-3 rounded-full bg-opacity-10 ${color.replace('border-', 'bg-')}`}>
+            {icon}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -183,13 +193,13 @@ export const ReferralStats: React.FC<ReferralStatsProps> = ({ className = '' }) 
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {referrer.referralCount}
+                        {referrer.referralCount.toLocaleString()}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                         ${typeof referrer.totalReferralAmount === 'number'
-                          ? referrer.totalReferralAmount.toFixed(2)
+                          ? referrer.totalReferralAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                           : '0.00'}
                       </span>
                     </td>

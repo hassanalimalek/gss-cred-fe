@@ -22,12 +22,20 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
+  // Helper function to format numbers with commas
+  const formatValue = (val: number | string): string => {
+    if (typeof val === 'number') {
+      return val.toLocaleString();
+    }
+    return val;
+  };
+
   return (
     <div className={`bg-white rounded-lg shadow-sm p-6 border-l-4 ${color}`}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-bold text-black mt-1">{value}</p>
+          <p className="text-2xl font-bold text-black mt-1">{formatValue(value)}</p>
         </div>
         <div className={`p-3 rounded-full bg-opacity-10 ${color.replace('border-', 'bg-')}`}>
           {icon}
@@ -158,7 +166,7 @@ const RecentRequests: React.FC<RecentRequestsProps> = ({ requests, isLoading }) 
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    ${request.packagePrice || 'N/A'}
+                    ${request.packagePrice?.toLocaleString() || 'N/A'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">

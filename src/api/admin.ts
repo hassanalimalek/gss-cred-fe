@@ -306,3 +306,78 @@ export const getCreditRepairStatistics = async (): Promise<CreditRepairStatistic
     return handleApiError(error, 'Failed to fetch credit repair statistics');
   }
 };
+
+/**
+ * Export credit repair requests to CSV
+ */
+export const exportCreditRepairRequestsToCsv = async (
+  filterStatus?: number,
+  search?: string,
+  startDate?: string,
+  endDate?: string
+): Promise<Blob> => {
+  try {
+    const params: Record<string, string> = {};
+
+    if (filterStatus !== undefined) {
+      params.filterStatus = String(filterStatus);
+    }
+
+    if (search && search.trim() !== '') {
+      params.search = search.trim();
+    }
+
+    if (startDate) {
+      params.startDate = startDate;
+    }
+
+    if (endDate) {
+      params.endDate = endDate;
+    }
+
+    const response = await api.get('/admin/credit-repair-requests/export/csv', { 
+      params,
+      responseType: 'blob'
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error exporting credit repair requests to CSV:', error);
+    return handleApiError(error, 'Failed to export credit repair requests to CSV');
+  }
+};
+
+/**
+ * Export customers to CSV
+ */
+export const exportCustomersToCsv = async (
+  search?: string,
+  startDate?: string,
+  endDate?: string
+): Promise<Blob> => {
+  try {
+    const params: Record<string, string> = {};
+
+    if (search && search.trim() !== '') {
+      params.search = search.trim();
+    }
+
+    if (startDate) {
+      params.startDate = startDate;
+    }
+
+    if (endDate) {
+      params.endDate = endDate;
+    }
+
+    const response = await api.get('/admin/customers/export/csv', { 
+      params,
+      responseType: 'blob'
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error exporting customers to CSV:', error);
+    return handleApiError(error, 'Failed to export customers to CSV');
+  }
+};

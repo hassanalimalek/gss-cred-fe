@@ -461,7 +461,7 @@ export default function CustomerDetail() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          ${request.packagePrice}
+                          ${request.packagePrice?.toLocaleString()}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -528,24 +528,6 @@ export default function CustomerDetail() {
               </div>
             </div>
 
-            {/* Referred By Information */}
-            {(customer.referredBy || (customer.creditRepairRequests && customer.creditRepairRequests.length > 0 && customer.creditRepairRequests[0].appliedReferralCode)) && (
-              <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-blue-50">
-                <h3 className="text-md font-medium text-gray-800 mb-3">This Customer Was Referred</h3>
-                <div className="flex items-center">
-                  <UsersIcon className="h-5 w-5 text-blue-500 mr-2" />
-                  <span className="text-sm text-gray-900">This customer was referred by another user</span>
-                </div>
-                {customer.creditRepairRequests && customer.creditRepairRequests.length > 0 && customer.creditRepairRequests[0].appliedReferralCode && (
-                  <div className="mt-2">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Used Code: {customer.creditRepairRequests[0].appliedReferralCode}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Customers Referred List */}
             <div className="p-4 border border-gray-200 rounded-lg bg-white">
               <h3 className="text-md font-medium text-gray-800 mb-4">Customers Referred</h3>
@@ -596,6 +578,7 @@ const ReferralsList: React.FC<ReferralsListProps> = ({ customerId }) => {
   const [referrals, setReferrals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchReferrals = async () => {
@@ -614,6 +597,10 @@ const ReferralsList: React.FC<ReferralsListProps> = ({ customerId }) => {
 
     fetchReferrals();
   }, [customerId]);
+
+  const handleCustomerClick = (customerId: string) => {
+    router.push(`/admin/customers/${customerId}`);
+  };
 
   if (isLoading) {
     return (
@@ -656,7 +643,12 @@ const ReferralsList: React.FC<ReferralsListProps> = ({ customerId }) => {
               <UserIcon className="h-4 w-4 text-blue-600" />
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-900">{referral.fullName}</div>
+              <button
+                onClick={() => handleCustomerClick(referral._id)}
+                className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left"
+              >
+                {referral.fullName}
+              </button>
               <div className="text-xs text-gray-500">{referral.email}</div>
             </div>
           </div>
@@ -722,7 +714,7 @@ const ReferralValue: React.FC<ReferralValueProps> = ({ customerId }) => {
 
   return (
     <span className="text-2xl font-bold text-green-600">
-      ${totalValue.toFixed(2)}
+      ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </span>
   );
 };
