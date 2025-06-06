@@ -135,7 +135,7 @@ export const Hero = () => {
 
         {/* Book Next Meeting Button */}
         <a
-          href="https://calendly.com/gznitellc/wipe"
+          href="https://calendly.com/gznitellc/wow"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center justify-center px-10 py-4 text-lg font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2 transition-all rounded-md shadow-lg hover:shadow-xl transform hover:scale-105 min-h-[44px] min-w-[44px]"
