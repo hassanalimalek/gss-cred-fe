@@ -18,8 +18,8 @@ const getInitials = (name: string): string => {
     return nameParts[0].charAt(0).toUpperCase();
   }
 
-  // Get first letter of first name and first letter of last name
-  return (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
+  // Get first letter of first name only
+  return (nameParts[0].charAt(0)).toUpperCase();
 };
 
 // Generate a consistent background color based on the name
