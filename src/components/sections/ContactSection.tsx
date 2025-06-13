@@ -223,7 +223,7 @@ export const ContactSection = () => {
                       className="w-full pl-10 px-4 py-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent text-gray-900"
                     />
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">Format: +1 followed by 10 digits</p>
+      
                 </div>
                 <div>
                   <input

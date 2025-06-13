@@ -1295,7 +1295,7 @@ const OnboardingForm = () => {
                         required
                       />
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">Format: +1 followed by 10 digits</p>
+    
                     {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
                   </div>
                 </div>

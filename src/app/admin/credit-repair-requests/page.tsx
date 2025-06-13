@@ -240,7 +240,7 @@ export default function CreditRepairRequestsPage() {
             <span className="text-sm text-gray-500 mr-2">Total:</span>
             <CountBadge count={total} />
           </div>
-          <button
+          {/* <button
             onClick={handleExportToCsv}
             disabled={isExporting}
             className="flex items-center px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -251,7 +251,7 @@ export default function CreditRepairRequestsPage() {
               <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
             )}
             {isExporting ? 'Exporting' : 'Export CSV'}
-          </button>
+          </button> */}
           <button
             onClick={fetchRequests}
             className="flex items-center px-3 py-2 text-sm font-medium text-primary bg-white rounded-md border border-gray-300 hover:bg-gray-50"

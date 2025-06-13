@@ -206,7 +206,7 @@ export const ContactSectionSimple = () => {
                       className="w-full pl-10 px-4 py-3 border border-gray-300 rounded focus:outline-none focus:border-yellow-600 text-black"
                     />
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">Format: +1 followed by 10 digits</p>
+              
                 </div>
               </div>
 
