@@ -376,12 +376,6 @@ const OnboardingForm = () => {
       handleReferralCodeChange(value);
       return;
     }
-    
-    // Clear referral code error when user starts typing
-    setReferralCodeStatus('idle');
-    const newErrors = { ...errors };
-    delete newErrors.referralCode;
-    setErrors(newErrors);
 
     setFormData(prev => ({ 
       ...prev, 
