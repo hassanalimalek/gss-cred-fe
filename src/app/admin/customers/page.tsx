@@ -35,6 +35,7 @@ export default function CustomersPage() {
   const [sortOrder] = useState('desc');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [copiedReferralCode, setCopiedReferralCode] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -140,6 +141,18 @@ export default function CustomersPage() {
     }
   };
 
+  // Copy referral code to clipboard
+  const copyReferralCode = (e: React.MouseEvent, referralCode: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(referralCode).then(() => {
+      setCopiedReferralCode(referralCode);
+      showSuccessToast('Referral code copied to clipboard!');
+      setTimeout(() => setCopiedReferralCode(null), 2000);
+    }).catch(() => {
+      showErrorToast('Failed to copy referral code');
+    });
+  };
+
   // Removed unused commented-out code for:
   // - handleSort
   // - getStatusText
@@ -210,6 +223,9 @@ export default function CustomersPage() {
                     Contact Info
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Referral Code
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Last Package
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -222,7 +238,7 @@ export default function CustomersPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {Array.from({ length: 5 }).map((_, index) => (
-                  <TableRowSkeleton key={index} columns={5} />
+                  <TableRowSkeleton key={index} columns={6} />
                 ))}
               </tbody>
             </table>
@@ -238,6 +254,9 @@ export default function CustomersPage() {
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact Info
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Referral Code
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last Package
@@ -272,6 +291,30 @@ export default function CustomersPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{customer.email}</div>
                           <div className="text-sm text-gray-500">{customer.phoneNumber}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {customer.referralCode ? (
+                              <>
+                                <div className="text-sm text-gray-900 mr-2">{customer.referralCode}</div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => copyReferralCode(e, customer.referralCode!)}
+                                  className="p-1.5 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors"
+                                  aria-label="Copy referral code"
+                                  title="Copy referral code"
+                                >
+                                  {copiedReferralCode === customer.referralCode ? (
+                                    <CheckIcon className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <DocumentDuplicateIcon className="h-4 w-4 text-primary" />
+                                  )}
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">No Referral Code</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {customer.creditRepairRequests && customer.creditRepairRequests.length > 0 ? (
@@ -309,7 +352,7 @@ export default function CustomersPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="py-12">
+                      <td colSpan={6} className="py-12">
                         <div className="flex flex-col items-center justify-center">
                           <div className="text-gray-300 mb-4">
                             <UserGroupIcon className="h-16 w-16" />
