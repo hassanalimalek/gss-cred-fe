@@ -7,6 +7,15 @@ import { Testimonial } from '@/components/sections/Testimonials';
 export const testimonials: Testimonial[] = [
   {
     image: null,
+    name:'Amin R',
+    text:'Hi, I\'m Amin from Dallas, TX! I’m thrilled to share my experience with Mulligan Credit Repair. They wiped out a massive $74,000 in debt for me, and it was absolutely worth the VIP $3,499 investment. From start to finish, it took just 60 days to see my credit score soar by 130 points! The team’s dedication turned my financial stress into hope and relief—thank you, Mulligan Credit Repair, for giving me a fresh start!'
+  },{
+    image:null,
+    name:"Nicole Green",
+    text:"Hey! I'm Nicole Green from St. Anthony, MN. I had $240,000 in debt and in 2 months, my credit went from 600 to over 750 and they erased this debt with the Tier 3 membership. Getting rid of $240,000 of debt was DEFINITELY worth the $3400. Thank you Mulligan Credit Repair"
+  },
+  {
+    image: null,
     name: "Jane D",
     text: "Increased her credit score by 120 points in just 60 days, allowing her to qualify for a mortgage with a competitive interest rate."
   },
@@ -60,9 +69,5 @@ export const testimonials: Testimonial[] = [
     name: "William Taylor",
     text: "After years of financial struggles, Mulligan helped me remove outdated collections and negotiate with creditors. My score went from 540 to 680 in just 6 months."
   }
-  ,{
-    image:null,
-    name:"Nicole Green",
-    text:"Hey! I'm Nicole Green from St. Anthony, MN. I had $240,000 in debt and in 2 months, my credit went from 600 to over 750 and they erased this debt with the Tier 3 membership. Getting rid of $240,000 of debt was DEFINITELY worth the $3400. Thank you Mulligan Credit Repair"
-  }
+  
 ];
